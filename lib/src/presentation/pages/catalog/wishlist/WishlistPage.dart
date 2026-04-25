@@ -12,6 +12,11 @@ const _kSub      = Color(0xFF757575);
 const _kDivider  = Color(0xFFEEEEEE);
 const _kRed      = Color(0xFFE53935);
 
+String _fmt(double v) {
+  if (v == v.truncate()) return v.toInt().toString();
+  return v.toStringAsFixed(2);
+}
+
 class WishlistPage extends StatefulWidget {
   const WishlistPage({super.key});
 
@@ -340,8 +345,4 @@ class _WishlistCard extends StatelessWidget {
         ),
       );
 
-  String _fmt(double v) {
-    if (v == v.truncate()) return v.toInt().toString();
-    return v.toStringAsFixed(2);
-  }
 }
