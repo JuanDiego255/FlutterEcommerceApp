@@ -41,6 +41,7 @@ class CatalogService {
     int page = 1,
     int perPage = 20,
     String search = '',
+    List<String> attrValues = const [],
   }) async {
     try {
       final params = <String, String>{
@@ -48,6 +49,7 @@ class CatalogService {
         'page': '$page',
         'per_page': '$perPage',
         if (search.isNotEmpty) 'search': search,
+        if (attrValues.isNotEmpty) 'attr_values': attrValues.join(','),
       };
       final url = Uri.https(_host, '/api/products/category/$categoryId/$_tenant', params);
       final res = await http.get(url, headers: _headers)

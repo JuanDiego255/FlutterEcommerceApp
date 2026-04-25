@@ -1,9 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogHomeData.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogNavItem.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProduct.dart';
+import 'package:ecommerce_flutter/src/domain/models/catalog/WishlistItem.dart';
+import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/bloc/CatalogHomeBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/bloc/CatalogHomeEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/bloc/CatalogHomeState.dart';
@@ -347,11 +350,7 @@ class _ContentViewState extends State<_ContentView> {
             padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Text(
               'Destacados',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: _kPrimary,
-              ),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary),
             ),
           ),
           GridView.builder(
@@ -362,16 +361,16 @@ class _ContentViewState extends State<_ContentView> {
               crossAxisCount: 2,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 0.72,
+              childAspectRatio: 0.65,
             ),
             itemCount: data.featured.length,
-            itemBuilder: (_, i) => _ProductCard(
+            itemBuilder: (_, i) => _FeaturedCard(
               product: data.featured[i],
               onTap: () => Navigator.pushNamed(
                 context,
                 'catalog/product/detail',
                 arguments: {'product': data.featured[i]},
-              ),
+              ).then((_) => setState(() {})),
             ),
           ),
         ],
@@ -384,97 +383,173 @@ class _ContentViewState extends State<_ContentView> {
   SliverToBoxAdapter _buildFooter() {
     final info = data.tenantInfo;
     final hasSocial = data.social.isNotEmpty;
-    final hasContact = (info.email?.isNotEmpty ?? false) ||
-        (info.whatsapp?.isNotEmpty ?? false);
-    if (!hasSocial && !hasContact && (info.footer?.isEmpty ?? true)) {
+    final hasWa    = info.whatsapp?.isNotEmpty ?? false;
+    final hasEmail = info.email?.isNotEmpty ?? false;
+    final hasContact = hasWa || hasEmail;
+    if (!hasSocial && !hasContact && (info.footer?.isEmpty ?? true) && info.title.isEmpty) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
 
     return SliverToBoxAdapter(
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _kPrimary,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (info.title.isNotEmpty)
-              Text(
-                info.title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            if (info.footer?.isNotEmpty ?? false) ...[
-              const SizedBox(height: 6),
-              Text(
-                info.footer!,
-                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
-              ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: const [
+              BoxShadow(color: Color(0x0C000000), blurRadius: 20, offset: Offset(0, 4)),
             ],
-            if (hasContact) ...[
-              const SizedBox(height: 12),
-              if (info.whatsapp?.isNotEmpty ?? false)
-                _FooterLink(
-                  icon: Icons.chat_outlined,
-                  label: info.whatsapp!,
-                  color: const Color(0xFF25D366),
-                  onTap: () => _launchUrl(info.whatsappUrl),
+          ),
+          child: Column(
+            children: [
+              // ── Gradient header ──────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF6B4F30), _kAccent],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
-              if (info.email?.isNotEmpty ?? false)
-                _FooterLink(
-                  icon: Icons.email_outlined,
-                  label: info.email!,
-                  color: Colors.white70,
-                  onTap: () => _launchUrl('mailto:${info.email}'),
-                ),
-            ],
-            if (hasSocial) ...[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: data.social
-                    .where((s) => s.url?.isNotEmpty ?? false)
-                    .map((s) => GestureDetector(
-                          onTap: () => _launchUrl(s.url!),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              s.name,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 11),
-                            ),
+                child: Row(
+                  children: [
+                    if (info.logoUrl.isNotEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: CachedNetworkImage(
+                          imageUrl: info.logoUrl,
+                          width: 44,
+                          height: 44,
+                          fit: BoxFit.contain,
+                          errorWidget: (_, __, ___) => const Icon(
+                            Icons.storefront_rounded,
+                            color: Colors.white,
+                            size: 28,
                           ),
-                        ))
-                    .toList(),
-              ),
-            ],
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () => _launchUrl(
-                  'https://${TenantSession.host}/privacy-policy'),
-              child: Text(
-                'Política de privacidad',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.5),
-                  fontSize: 11,
-                  decoration: TextDecoration.underline,
-                  decorationColor: Colors.white.withOpacity(0.5),
+                        ),
+                      )
+                    else
+                      const Icon(Icons.storefront_rounded, color: Colors.white, size: 28),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (info.title.isNotEmpty)
+                            Text(
+                              info.title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          if (info.footer?.isNotEmpty ?? false) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              info.footer!,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 12,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+
+              // ── Contact + social ─────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (hasContact) ...[
+                      Row(
+                        children: [
+                          if (hasWa)
+                            Expanded(
+                              child: _ContactChip(
+                                icon: Icons.chat_rounded,
+                                label: 'WhatsApp',
+                                color: const Color(0xFF25D366),
+                                onTap: () => _launchUrl(info.whatsappUrl),
+                              ),
+                            ),
+                          if (hasWa && hasEmail) const SizedBox(width: 10),
+                          if (hasEmail)
+                            Expanded(
+                              child: _ContactChip(
+                                icon: Icons.email_rounded,
+                                label: info.email!,
+                                color: _kAccent,
+                                onTap: () => _launchUrl('mailto:${info.email}'),
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (hasSocial) const SizedBox(height: 12),
+                    ],
+                    if (hasSocial) ...[
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: data.social
+                            .where((s) => s.url?.isNotEmpty ?? false)
+                            .map(
+                              (s) => GestureDetector(
+                                onTap: () => _launchUrl(s.url!),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF5F0EB),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: _kDivider),
+                                  ),
+                                  child: Text(
+                                    s.name,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: _kAccent,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    const Divider(height: 1, color: _kDivider),
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: () =>
+                          _launchUrl('https://${TenantSession.host}/privacy-policy'),
+                      child: Text(
+                        'Política de privacidad',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[500],
+                          decoration: TextDecoration.underline,
+                          decorationColor: Colors.grey[400],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -561,127 +636,167 @@ class _NavChip extends StatelessWidget {
       );
 }
 
-// ─── Product card ─────────────────────────────────────────────────────────────
+// ─── Featured card (stateful — owns wishlist state) ───────────────────────────
 
-class _ProductCard extends StatelessWidget {
+class _FeaturedCard extends StatefulWidget {
   final CatalogProduct product;
   final VoidCallback onTap;
+  const _FeaturedCard({required this.product, required this.onTap});
+  @override
+  State<_FeaturedCard> createState() => _FeaturedCardState();
+}
 
-  const _ProductCard({required this.product, required this.onTap});
+class _FeaturedCardState extends State<_FeaturedCard> {
+  bool _inWishlist = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WishlistService.contains(widget.product.id)
+        .then((v) { if (mounted) setState(() => _inWishlist = v); });
+  }
+
+  Future<void> _toggleWishlist() async {
+    final p = widget.product;
+    if (_inWishlist) {
+      await WishlistService.remove(p.id);
+      if (mounted) setState(() => _inWishlist = false);
+      return;
+    }
+    final attrs = p.availableAttrs;
+    if (attrs.isEmpty) {
+      await WishlistService.add(WishlistItem(product: p));
+    } else if (attrs.length == 1) {
+      await WishlistService.add(WishlistItem(product: p, variantLabel: attrs.first));
+    } else {
+      final picked = await _showVariantPicker(context, attrs);
+      if (picked == null) return;
+      await WishlistService.add(WishlistItem(product: p, variantLabel: picked));
+    }
+    if (mounted) setState(() => _inWishlist = true);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final p = widget.product;
+    final attrs = p.availableAttrs;
+    const maxVisible = 3;
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         decoration: BoxDecoration(
           color: _kCard,
           borderRadius: BorderRadius.circular(14),
           boxShadow: const [
-            BoxShadow(
-              color: Color(0x0D000000),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
+            BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2)),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image
             Expanded(
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(14)),
-                    child: product.imageUrl.isNotEmpty
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                    child: p.imageUrl.isNotEmpty
                         ? CachedNetworkImage(
-                            imageUrl: product.imageUrl,
+                            imageUrl: p.imageUrl,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
-                                color: const Color(0xFFF5F5F5)),
-                            errorWidget: (_, __, ___) =>
-                                _placeholderImage(),
+                            placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
+                            errorWidget: (_, __, ___) => _imgPlaceholder(),
                           )
-                        : _placeholderImage(),
+                        : _imgPlaceholder(),
                   ),
-                  if (product.hasDiscount)
+                  if (p.hasDiscount)
                     Positioned(
-                      top: 8,
-                      left: 8,
+                      top: 8, left: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                         decoration: BoxDecoration(
                           color: const Color(0xFFE53935),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text(
-                          '-${product.discount}%',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
+                        child: Text('-${p.discount}%',
+                            style: const TextStyle(
+                              color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700,
+                            )),
+                      ),
+                    ),
+                  Positioned(
+                    top: 6, right: 6,
+                    child: GestureDetector(
+                      onTap: _toggleWishlist,
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        width: 32, height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                          boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 4)],
+                        ),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          child: Icon(
+                            _inWishlist ? Icons.favorite : Icons.favorite_border,
+                            key: ValueKey(_inWishlist),
+                            size: 16,
+                            color: _inWishlist ? const Color(0xFFE53935) : _kSub,
                           ),
                         ),
                       ),
                     ),
+                  ),
                 ],
               ),
             ),
-            // Info
             Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _kPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  if (product.hasDiscount) ...[
-                    Text(
-                      '₡${_fmt(product.price)}',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: _kSub,
-                        decoration: TextDecoration.lineThrough,
-                      ),
-                    ),
-                    Text(
-                      '₡${_fmt(product.finalPrice)}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFE53935),
-                      ),
-                    ),
-                  ] else
-                    Text(
-                      '₡${_fmt(product.price)}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: _kAccent,
-                      ),
-                    ),
-                  if (product.availableAttrs.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      product.availableAttrs.join(' · '),
-                      maxLines: 1,
+                  Text(p.name,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontSize: 10, color: _kSub),
+                          fontSize: 12, fontWeight: FontWeight.w600, color: _kPrimary)),
+                  const SizedBox(height: 4),
+                  if (p.hasDiscount) ...[
+                    Text('₡${fmtPrice(p.price)}',
+                        style: const TextStyle(
+                            fontSize: 10, color: _kSub, decoration: TextDecoration.lineThrough)),
+                    Text('₡${fmtPrice(p.finalPrice)}',
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFE53935))),
+                  ] else
+                    Text('₡${fmtPrice(p.price)}',
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent)),
+                  if (attrs.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: [
+                        for (int i = 0; i < attrs.length && i < maxVisible; i++)
+                          _AttrChip(label: attrs[i]),
+                        if (attrs.length > maxVisible)
+                          GestureDetector(
+                            onTap: () => _showVariantPicker(context, attrs),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5F0EB),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text('+${attrs.length - maxVisible}',
+                                  style: const TextStyle(
+                                      fontSize: 10, color: _kAccent, fontWeight: FontWeight.w600)),
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ],
@@ -693,53 +808,119 @@ class _ProductCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholderImage() => Container(
+  Widget _imgPlaceholder() => Container(
         color: const Color(0xFFF5F5F5),
-        child: const Center(
-          child: Icon(Icons.image_outlined, size: 36, color: Color(0xFFBDBDBD)),
-        ),
+        child: const Center(child: Icon(Icons.image_outlined, size: 36, color: Color(0xFFBDBDBD))),
       );
-
-  String _fmt(double v) {
-    if (v == v.truncate()) return v.toInt().toString();
-    return v.toStringAsFixed(2);
-  }
 }
 
-// ─── Footer link ──────────────────────────────────────────────────────────────
+// ─── Small attr chip ──────────────────────────────────────────────────────────
 
-class _FooterLink extends StatelessWidget {
+class _AttrChip extends StatelessWidget {
+  final String label;
+  const _AttrChip({required this.label});
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F0EB), borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(label,
+            style: const TextStyle(fontSize: 10, color: _kAccent, fontWeight: FontWeight.w500)),
+      );
+}
+
+// ─── Contact chip (footer) ────────────────────────────────────────────────────
+
+class _ContactChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
+  const _ContactChip({required this.icon, required this.label, required this.color, required this.onTap});
 
-  const _FooterLink({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withOpacity(0.25)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(label,
+                    style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+// ─── Shared variant picker bottom sheet ───────────────────────────────────────
+
+Future<String?> _showVariantPicker(BuildContext context, List<String> attrs) {
+  return showModalBottomSheet<String>(
+    context: context,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (_) => _VariantPickerSheet(attrs: attrs),
+  );
+}
+
+class _VariantPickerSheet extends StatelessWidget {
+  final List<String> attrs;
+  const _VariantPickerSheet({required this.attrs});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(color: color, fontSize: 12),
-                overflow: TextOverflow.ellipsis,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Seleccioná una variante',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+          const SizedBox(height: 14),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: attrs.map((a) => GestureDetector(
+                  onTap: () => Navigator.pop(context, a),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F0EB),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _kAccent.withOpacity(0.3)),
+                    ),
+                    child: Text(a,
+                        style: const TextStyle(
+                            fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600)),
+                  ),
+                )).toList(),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

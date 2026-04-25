@@ -19,6 +19,7 @@ class CatalogProductsBloc extends Bloc<CatalogProductsEvent, CatalogProductsStat
       event.categoryId,
       page: 1,
       search: event.search,
+      attrValues: event.attrValues,
     );
     if (result is Success<Map<String, dynamic>>) {
       final data = result.data;
@@ -30,6 +31,7 @@ class CatalogProductsBloc extends Bloc<CatalogProductsEvent, CatalogProductsStat
         page: 1,
         categoryId: event.categoryId,
         search: event.search,
+        attrValues: event.attrValues,
       ));
     } else if (result is Error<Map<String, dynamic>>) {
       emit(CatalogProductsError(result.message));
@@ -46,12 +48,14 @@ class CatalogProductsBloc extends Bloc<CatalogProductsEvent, CatalogProductsStat
       page: current.page,
       categoryId: current.categoryId,
       search: current.search,
+      attrValues: current.attrValues,
     ));
 
     final result = await _service.getProductsByCategory(
       current.categoryId,
       page: nextPage,
       search: current.search,
+      attrValues: current.attrValues,
     );
     if (result is Success<Map<String, dynamic>>) {
       final data = result.data;
@@ -63,6 +67,7 @@ class CatalogProductsBloc extends Bloc<CatalogProductsEvent, CatalogProductsStat
         page: nextPage,
         categoryId: current.categoryId,
         search: current.search,
+        attrValues: current.attrValues,
       ));
     } else {
       emit(CatalogProductsLoaded(
@@ -71,6 +76,7 @@ class CatalogProductsBloc extends Bloc<CatalogProductsEvent, CatalogProductsStat
         page: current.page,
         categoryId: current.categoryId,
         search: current.search,
+        attrValues: current.attrValues,
       ));
     }
   }

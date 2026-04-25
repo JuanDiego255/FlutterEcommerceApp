@@ -32,7 +32,9 @@ class CatalogTenantInfo {
 
   String get whatsappUrl {
     if (whatsapp == null || whatsapp!.isEmpty) return '';
-    final clean = whatsapp!.replaceAll(RegExp(r'[^\d+]'), '');
+    var clean = whatsapp!.replaceAll(RegExp(r'[^\d]'), '');
+    if (clean.isEmpty) return '';
+    if (!clean.startsWith('506')) clean = '506$clean';
     return 'https://wa.me/$clean';
   }
 

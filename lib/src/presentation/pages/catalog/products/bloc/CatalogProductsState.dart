@@ -12,6 +12,7 @@ class CatalogProductsLoaded extends CatalogProductsState {
   final int page;
   final int categoryId;
   final String search;
+  final List<String> attrValues;
 
   CatalogProductsLoaded({
     required this.products,
@@ -19,6 +20,7 @@ class CatalogProductsLoaded extends CatalogProductsState {
     required this.page,
     required this.categoryId,
     required this.search,
+    this.attrValues = const [],
   });
 }
 
@@ -27,12 +29,14 @@ class CatalogProductsLoadingMore extends CatalogProductsState {
   final int page;
   final int categoryId;
   final String search;
+  final List<String> attrValues;
 
   CatalogProductsLoadingMore({
     required this.products,
     required this.page,
     required this.categoryId,
     required this.search,
+    this.attrValues = const [],
   });
 }
 

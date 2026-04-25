@@ -1,7 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogNavItem.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProduct.dart';
+import 'package:ecommerce_flutter/src/domain/models/catalog/WishlistItem.dart';
+import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/products/bloc/CatalogProductsBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/products/bloc/CatalogProductsEvent.dart';
@@ -61,6 +64,11 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
   bool _loadingCategories = false;
   bool _loadMoreTriggered = false;
 
+  // Attribute filters
+  List<Map<String, dynamic>> _attrGroups = [];
+  final Set<String> _selectedAttrs = {};
+  bool _loadingAttrs = false;
+
   @override
   void initState() {
     super.initState();
@@ -71,6 +79,7 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
       _loadCategories();
     } else {
       _loadProducts(widget.item.id, search: widget.initialSearch);
+      _loadAttributes(widget.item.id);
     }
   }
 
@@ -104,6 +113,7 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
         if (cats.isNotEmpty) {
           _selectedCategory = cats.first;
           _loadProducts(cats.first.id, search: widget.initialSearch);
+          _loadAttributes(cats.first.id);
         }
       });
     } else {
@@ -111,10 +121,32 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
     }
   }
 
-  void _loadProducts(int categoryId, {String search = ''}) {
+  Future<void> _loadAttributes(int categoryId) async {
+    setState(() { _loadingAttrs = true; _attrGroups = []; _selectedAttrs.clear(); });
+    final result = await _service.getAttributesByCategory(categoryId);
+    if (!mounted) return;
+    if (result is Success<List<dynamic>>) {
+      final groups = result.data
+          .whereType<Map<String, dynamic>>()
+          .where((g) {
+            final vals = g['values'] as List<dynamic>?;
+            return vals != null && vals.isNotEmpty;
+          })
+          .toList();
+      setState(() { _attrGroups = groups; _loadingAttrs = false; });
+    } else {
+      setState(() => _loadingAttrs = false);
+    }
+  }
+
+  void _loadProducts(int categoryId, {String search = '', List<String>? attrValues}) {
     _loadMoreTriggered = false;
     context.read<CatalogProductsBloc>().add(
-      CatalogProductsLoad(categoryId: categoryId, search: search),
+      CatalogProductsLoad(
+        categoryId: categoryId,
+        search: search,
+        attrValues: attrValues ?? _selectedAttrs.toList(),
+      ),
     );
   }
 
@@ -122,6 +154,18 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
     final q = _searchCtrl.text.trim();
     final catId = _selectedCategory?.id ?? widget.item.id;
     _loadProducts(catId, search: q);
+  }
+
+  void _toggleAttr(String value) {
+    setState(() {
+      if (_selectedAttrs.contains(value)) {
+        _selectedAttrs.remove(value);
+      } else {
+        _selectedAttrs.add(value);
+      }
+    });
+    final catId = _selectedCategory?.id ?? widget.item.id;
+    _loadProducts(catId, search: _searchCtrl.text.trim());
   }
 
   @override
@@ -135,6 +179,7 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
           _buildSearchBar(),
           if (widget.isDept && (_loadingCategories || _subCategories.isNotEmpty))
             _buildCategoryChips(),
+          if (_attrGroups.isNotEmpty) _buildAttrFilters(),
           _buildProductGrid(),
           _buildLoadMoreIndicator(),
           const SliverToBoxAdapter(child: SizedBox(height: 80)),
@@ -251,6 +296,85 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
                 ),
         ),
       );
+
+  SliverToBoxAdapter _buildAttrFilters() {
+    final allValues = <String>[];
+    for (final g in _attrGroups) {
+      final vals = (g['values'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map((v) => v['value']?.toString() ?? '')
+          .where((v) => v.isNotEmpty)
+          .toList();
+      allValues.addAll(vals);
+    }
+    if (allValues.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    return SliverToBoxAdapter(
+      child: SizedBox(
+        height: 42,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          children: [
+            if (_selectedAttrs.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _selectedAttrs.clear());
+                    final catId = _selectedCategory?.id ?? widget.item.id;
+                    _loadProducts(catId, search: _searchCtrl.text.trim(), attrValues: []);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2D2D2D),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.close, color: Colors.white, size: 12),
+                        SizedBox(width: 4),
+                        Text('Limpiar', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            for (final value in allValues)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: GestureDetector(
+                  onTap: () => _toggleAttr(value),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _selectedAttrs.contains(value) ? _kAccent : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: _selectedAttrs.contains(value) ? _kAccent : _kDivider,
+                      ),
+                    ),
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: _selectedAttrs.contains(value)
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: _selectedAttrs.contains(value) ? Colors.white : _kPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildProductGrid() {
     return BlocConsumer<CatalogProductsBloc, CatalogProductsState>(
@@ -370,29 +494,60 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
       );
 }
 
-// ─── Product card (mirrors CatalogHomePage._ProductCard) ─────────────────────
+// ─── Product card ─────────────────────────────────────────────────────────────
 
-class _ProductCard extends StatelessWidget {
+class _ProductCard extends StatefulWidget {
   final CatalogProduct product;
   final VoidCallback onTap;
-
   const _ProductCard({required this.product, required this.onTap});
+  @override
+  State<_ProductCard> createState() => _ProductCardState();
+}
+
+class _ProductCardState extends State<_ProductCard> {
+  bool _inWishlist = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WishlistService.contains(widget.product.id)
+        .then((v) { if (mounted) setState(() => _inWishlist = v); });
+  }
+
+  Future<void> _toggleWishlist() async {
+    final p = widget.product;
+    if (_inWishlist) {
+      await WishlistService.remove(p.id);
+      if (mounted) setState(() => _inWishlist = false);
+      return;
+    }
+    final attrs = p.availableAttrs;
+    String? picked;
+    if (attrs.length > 1) {
+      picked = await showModalBottomSheet<String>(
+        context: context,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (_) => _VariantSheet(attrs: attrs),
+      );
+      if (picked == null) return;
+    } else if (attrs.length == 1) {
+      picked = attrs.first;
+    }
+    await WishlistService.add(WishlistItem(product: p, variantLabel: picked));
+    if (mounted) setState(() => _inWishlist = true);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final p = widget.product;
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         decoration: BoxDecoration(
           color: _kCard,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0D000000),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
+          boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -401,40 +556,53 @@ class _ProductCard extends StatelessWidget {
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(14)),
-                    child: product.imageUrl.isNotEmpty
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                    child: p.imageUrl.isNotEmpty
                         ? CachedNetworkImage(
-                            imageUrl: product.imageUrl,
+                            imageUrl: p.imageUrl,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) =>
-                                Container(color: const Color(0xFFF5F5F5)),
+                            placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
                             errorWidget: (_, __, ___) => _placeholder(),
                           )
                         : _placeholder(),
                   ),
-                  if (product.hasDiscount)
+                  if (p.hasDiscount)
                     Positioned(
-                      top: 8,
-                      left: 8,
+                      top: 8, left: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE53935),
-                          borderRadius: BorderRadius.circular(6),
+                          color: const Color(0xFFE53935), borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text(
-                          '-${product.discount}%',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
+                        child: Text('-${p.discount}%',
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  Positioned(
+                    top: 6, right: 6,
+                    child: GestureDetector(
+                      onTap: _toggleWishlist,
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        width: 32, height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                          boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 4)],
+                        ),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          child: Icon(
+                            _inWishlist ? Icons.favorite : Icons.favorite_border,
+                            key: ValueKey(_inWishlist),
+                            size: 16,
+                            color: _inWishlist ? const Color(0xFFE53935) : _kSub,
                           ),
                         ),
                       ),
                     ),
+                  ),
                 ],
               ),
             ),
@@ -443,51 +611,25 @@ class _ProductCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _kPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  if (product.hasDiscount) ...[
-                    Text(
-                      '₡${_fmt(product.price)}',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: _kSub,
-                        decoration: TextDecoration.lineThrough,
-                      ),
-                    ),
-                    Text(
-                      '₡${_fmt(product.finalPrice)}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFE53935),
-                      ),
-                    ),
-                  ] else
-                    Text(
-                      '₡${_fmt(product.price)}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: _kAccent,
-                      ),
-                    ),
-                  if (product.availableAttrs.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      product.availableAttrs.join(' · '),
-                      maxLines: 1,
+                  Text(p.name,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10, color: _kSub),
-                    ),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kPrimary)),
+                  const SizedBox(height: 4),
+                  if (p.hasDiscount) ...[
+                    Text('₡${fmtPrice(p.price)}',
+                        style: const TextStyle(fontSize: 10, color: _kSub, decoration: TextDecoration.lineThrough)),
+                    Text('₡${fmtPrice(p.finalPrice)}',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFE53935))),
+                  ] else
+                    Text('₡${fmtPrice(p.price)}',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent)),
+                  if (p.availableAttrs.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(p.availableAttrs.join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 10, color: _kSub)),
                   ],
                 ],
               ),
@@ -500,13 +642,47 @@ class _ProductCard extends StatelessWidget {
 
   Widget _placeholder() => Container(
         color: const Color(0xFFF5F5F5),
-        child: const Center(
-          child: Icon(Icons.image_outlined, size: 36, color: Color(0xFFBDBDBD)),
+        child: const Center(child: Icon(Icons.image_outlined, size: 36, color: Color(0xFFBDBDBD))),
+      );
+}
+
+class _VariantSheet extends StatelessWidget {
+  final List<String> attrs;
+  const _VariantSheet({required this.attrs});
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Container(width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 16),
+            const Text('Seleccioná una variante',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+            const SizedBox(height: 14),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Wrap(
+                  spacing: 8, runSpacing: 8,
+                  children: attrs.map((a) => GestureDetector(
+                    onTap: () => Navigator.pop(context, a),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F0EB),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _kAccent.withOpacity(0.3)),
+                      ),
+                      child: Text(a,
+                          style: const TextStyle(fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600)),
+                    ),
+                  )).toList(),
+                ),
+              ),
+            ),
+          ],
         ),
       );
-
-  String _fmt(double v) {
-    if (v == v.truncate()) return v.toInt().toString();
-    return v.toStringAsFixed(2);
-  }
 }

@@ -3,6 +3,8 @@ import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProduct.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProductDetail.dart';
+import 'package:ecommerce_flutter/src/domain/models/catalog/WishlistItem.dart';
+import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -96,10 +98,53 @@ class _DetailViewState extends State<_DetailView> {
   Future<void> _toggleWishlist() async {
     if (_inWishlist) {
       await WishlistService.remove(widget.product.id);
-    } else {
-      await WishlistService.add(widget.product);
+      if (mounted) setState(() => _inWishlist = false);
+      return;
     }
-    if (mounted) setState(() => _inWishlist = !_inWishlist);
+    // If detail is loaded, pick from full variants; otherwise fall back to availableAttrs
+    String? variantLabel;
+    double? variantPrice;
+
+    if (_detail != null && _detail!.variants.isNotEmpty) {
+      if (_selectedVariant != null) {
+        variantLabel = _selectedVariant!.label;
+        variantPrice = _selectedVariant!.hasCustomPrice ? _selectedVariant!.price : null;
+      } else if (_detail!.variants.length == 1) {
+        variantLabel = _detail!.variants.first.label;
+        variantPrice = _detail!.variants.first.hasCustomPrice ? _detail!.variants.first.price : null;
+      } else {
+        final labels = _detail!.variants.map((v) => v.label).toList();
+        final picked = await _showVariantSheet(labels);
+        if (picked == null) return;
+        variantLabel = picked;
+        final match = _detail!.variants.firstWhere((v) => v.label == picked, orElse: () => _detail!.variants.first);
+        variantPrice = match.hasCustomPrice ? match.price : null;
+      }
+    } else {
+      final attrs = widget.product.availableAttrs;
+      if (attrs.length == 1) {
+        variantLabel = attrs.first;
+      } else if (attrs.length > 1) {
+        variantLabel = await _showVariantSheet(attrs);
+        if (variantLabel == null) return;
+      }
+    }
+
+    await WishlistService.add(WishlistItem(
+      product: widget.product,
+      variantLabel: variantLabel,
+      variantPrice: variantPrice,
+    ));
+    if (mounted) setState(() => _inWishlist = true);
+  }
+
+  Future<String?> _showVariantSheet(List<String> labels) {
+    return showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _VariantPickerSheet(labels: labels),
+    );
   }
 
   double get _displayPrice {
@@ -289,7 +334,7 @@ class _DetailViewState extends State<_DetailView> {
           const SizedBox(height: 14),
           if (_hasDiscount) ...[
             Text(
-              '₡${_fmt(_basePrice)}',
+              '₡${fmtPrice(_basePrice)}',
               style: const TextStyle(
                 fontSize: 14,
                 color: _kSub,
@@ -301,7 +346,7 @@ class _DetailViewState extends State<_DetailView> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
-                  '₡${_fmt(_displayPrice)}',
+                  '₡${fmtPrice(_displayPrice)}',
                   style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
@@ -327,12 +372,12 @@ class _DetailViewState extends State<_DetailView> {
               ],
             ),
             Text(
-              'Ahorrás ₡${_fmt(_basePrice - _displayPrice)}',
+              'Ahorrás ₡${fmtPrice(_basePrice - _displayPrice)}',
               style: const TextStyle(fontSize: 12, color: _kGreen),
             ),
           ] else
             Text(
-              '₡${_fmt(_displayPrice)}',
+              '₡${fmtPrice(_displayPrice)}',
               style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
@@ -604,7 +649,7 @@ class _DetailViewState extends State<_DetailView> {
     final price = _displayPrice;
     final text = Uri.encodeComponent(
       '${widget.product.name}\n'
-      'Precio: ₡${_fmt(price)}\n'
+      'Precio: ₡${fmtPrice(price)}\n'
       '${widget.product.imageUrl}',
     );
     final uri = Uri.parse('https://wa.me/?text=$text');
@@ -620,7 +665,7 @@ class _DetailViewState extends State<_DetailView> {
     final text = Uri.encodeComponent(
       'Hola! Me interesa este producto:\n'
       '*${widget.product.name}*$variantNote\n'
-      'Precio: ₡${_fmt(price)}\n'
+      'Precio: ₡${fmtPrice(price)}\n'
       '${widget.product.imageUrl}',
     );
     final uri = Uri.parse('https://wa.me/?text=$text');
@@ -629,8 +674,58 @@ class _DetailViewState extends State<_DetailView> {
     }
   }
 
-  String _fmt(double v) {
-    if (v == v.truncate()) return v.toInt().toString();
-    return v.toStringAsFixed(2);
+}
+
+// ─── Variant picker sheet ─────────────────────────────────────────────────────
+
+class _VariantPickerSheet extends StatelessWidget {
+  final List<String> labels;
+  const _VariantPickerSheet({required this.labels});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300], borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Seleccioná una variante',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+          const SizedBox(height: 14),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Wrap(
+                spacing: 8, runSpacing: 8,
+                children: labels.map((l) => GestureDetector(
+                  onTap: () => Navigator.pop(context, l),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F0EB),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF8B6F47).withOpacity(0.3)),
+                    ),
+                    child: Text(l,
+                        style: const TextStyle(
+                          fontSize: 13, color: Color(0xFF8B6F47), fontWeight: FontWeight.w600,
+                        )),
+                  ),
+                )).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
