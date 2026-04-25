@@ -69,7 +69,7 @@ class ClientAddressListBloc extends Bloc<ClientAddressListEvent, ClientAddressLi
 
   Future<void> _onPaymentStripeSubmit(OnPaymentStripeSubmit event, Emitter<ClientAddressListState> emit) async {
     final response = await http.post(
-      Uri.parse('https://payment_stripe/create'),
+      Uri.parse('https://${ApiConfig.NGROK_URL}/payment_stripe/create'),
     );
     print('RESPONSE STATUS: ${response.statusCode}');
     print('RESPONSE BODY: ${response.body}');
@@ -115,7 +115,7 @@ class ClientAddressListBloc extends Bloc<ClientAddressListEvent, ClientAddressLi
     Address address = await addressUseCases.getAddressSession.run();
     List<Product> products = await shoppingBagUseCases.getProducts.run();
 
-    final url = Uri.parse('https://payment/create');
+    final url = Uri.parse('https://${ApiConfig.NGROK_URL}/payment/create');
     try {
       final orderBody = OrderBody(
         idUser: authResponse.user.id!, 
