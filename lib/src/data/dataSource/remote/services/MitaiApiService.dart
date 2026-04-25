@@ -274,7 +274,7 @@ class MitaiApiService {
       final token = await _getToken();
       final url = Uri.https(_baseHost, '/api/admin/products/$id');
       final response = await http.delete(url, headers: _headers(token));
-      if (response.statusCode == 200 || response.statusCode == 201) return const Success(true);
+      if (response.statusCode == 200 || response.statusCode == 201) return  Success(true);
       return Error(_parseError(response, 'Error al eliminar producto'));
     } catch (e) {
       return Error(e.toString());

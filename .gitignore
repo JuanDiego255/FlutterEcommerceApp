@@ -1,0 +1,30 @@
+# Archivos de build
+build/
+
+# Dart / Flutter
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+
+# IDEs
+.idea/
+.vscode/
+
+# Mac
+.DS_Store
+
+# Android
+android/.gradle/
+android/app/build/
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# Archivos sensibles
+*.keystore
+*.jks
+key.properties
