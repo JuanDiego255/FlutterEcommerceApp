@@ -14,6 +14,8 @@ import 'package:ecommerce_flutter/src/presentation/pages/auth/register/RegisterP
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/detail/CatalogProductDetailPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/CatalogHomePage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/products/CatalogProductListPage.dart';
+import 'package:ecommerce_flutter/src/presentation/pages/auth/token/AdminTokenPage.dart';
+import 'package:ecommerce_flutter/src/presentation/pages/catalog/tenant/TenantSelectPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/wishlist/WishlistPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/ClientShoppingBagPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/address/create/ClientAddressCreatePage.dart';
@@ -78,8 +80,10 @@ class _MyAppState extends State<MyApp> {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
         ),
-        initialRoute: TenantSession.isConfigured ? 'catalog/home' : 'login',
+        initialRoute: TenantSession.isConfigured ? 'catalog/home' : 'tenant/select',
         routes: {
+          'tenant/select': (BuildContext context) => const TenantSelectPage(),
+          'admin/token': (BuildContext context) => const AdminTokenPage(),
           'login': (BuildContext context) => LoginPage(),
           'register': (BuildContext context) => RegisterPage(),
           'catalog/home': (BuildContext context) => const CatalogHomePage(),

@@ -34,6 +34,7 @@ class TenantSession {
   }
 
   static bool get isConfigured => _config != null && _config!.domain.isNotEmpty;
+  static bool get hasAdminAccess => _config?.appToken?.isNotEmpty ?? false;
   static String get host => _config?.domain ?? '';
   static String? get appToken => _config?.appToken;
   static TenantConfig? get config => _config;

@@ -185,16 +185,41 @@ class _ContentViewState extends State<_ContentView> {
           tooltip: 'Favoritos',
           onPressed: () => Navigator.pushNamed(context, 'catalog/wishlist'),
         ),
-        TextButton(
-          onPressed: () => Navigator.pushNamed(context, 'login'),
-          child: const Text(
-            'Admin',
-            style: TextStyle(
-              fontSize: 12,
-              color: _kAccent,
-              fontWeight: FontWeight.w600,
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert, color: _kSub, size: 20),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          onSelected: (value) {
+            if (value == 'admin') {
+              Navigator.pushNamed(
+                context,
+                TenantSession.hasAdminAccess ? 'login' : 'admin/token',
+              );
+            } else if (value == 'change') {
+              Navigator.pushReplacementNamed(context, 'tenant/select');
+            }
+          },
+          itemBuilder: (_) => [
+            const PopupMenuItem(
+              value: 'admin',
+              child: Row(
+                children: [
+                  Icon(Icons.admin_panel_settings_outlined, size: 18, color: _kAccent),
+                  SizedBox(width: 10),
+                  Text('Panel admin', style: TextStyle(fontSize: 13)),
+                ],
+              ),
             ),
-          ),
+            const PopupMenuItem(
+              value: 'change',
+              child: Row(
+                children: [
+                  Icon(Icons.swap_horiz_outlined, size: 18, color: _kSub),
+                  SizedBox(width: 10),
+                  Text('Cambiar tienda', style: TextStyle(fontSize: 13)),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );

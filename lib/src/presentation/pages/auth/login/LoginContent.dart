@@ -41,7 +41,7 @@ class _LoginContentState extends State<LoginContent> {
   @override
   void initState() {
     super.initState();
-    _showServerConfig = !TenantSession.isConfigured;
+    _showServerConfig = !TenantSession.hasAdminAccess;
     _domainCtrl = TextEditingController(text: TenantSession.host);
   }
 
