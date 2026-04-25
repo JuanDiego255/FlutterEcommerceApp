@@ -26,14 +26,20 @@ const _kTenants = [
   _Tenant(
     name: 'Mitai CR',
     subtitle: 'Ropa y accesorios para bebé',
-    domain: 'mitaibabyboutique.mitaicr.com',
+    domain: 'mitaicr.com',
     icon: Icons.child_care_outlined,
   ),
   _Tenant(
     name: 'Solo Ciclismo',
     subtitle: 'Equipos y accesorios de ciclismo',
-    domain: 'solociclismocrc.mitaicr.com',
+    domain: 'solociclismocrc.safeworsolutions.com',
     icon: Icons.directions_bike_outlined,
+  ),
+  _Tenant(
+    name: 'Mueblería Sarchi',
+    subtitle: 'Muebles y decoración artesanal',
+    domain: 'muebleriasarchi.com',
+    icon: Icons.chair_outlined,
   ),
 ];
 
