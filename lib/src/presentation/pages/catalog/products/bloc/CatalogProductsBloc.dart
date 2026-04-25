@@ -20,8 +20,8 @@ class CatalogProductsBloc extends Bloc<CatalogProductsEvent, CatalogProductsStat
       page: 1,
       search: event.search,
     );
-    if (result is Success) {
-      final data = result.data!;
+    if (result is Success<Map<String, dynamic>>) {
+      final data = result.data;
       final items = _parseProducts(data);
       final lastPage = _lastPage(data);
       emit(CatalogProductsLoaded(
@@ -31,8 +31,8 @@ class CatalogProductsBloc extends Bloc<CatalogProductsEvent, CatalogProductsStat
         categoryId: event.categoryId,
         search: event.search,
       ));
-    } else if (result is Error) {
-      emit(CatalogProductsError((result as Error<Map<String, dynamic>>).message ?? 'Error desconocido'));
+    } else if (result is Error<Map<String, dynamic>>) {
+      emit(CatalogProductsError(result.message));
     }
   }
 
@@ -53,8 +53,8 @@ class CatalogProductsBloc extends Bloc<CatalogProductsEvent, CatalogProductsStat
       page: nextPage,
       search: current.search,
     );
-    if (result is Success) {
-      final data = result.data!;
+    if (result is Success<Map<String, dynamic>>) {
+      final data = result.data;
       final newItems = _parseProducts(data);
       final lastPage = _lastPage(data);
       emit(CatalogProductsLoaded(

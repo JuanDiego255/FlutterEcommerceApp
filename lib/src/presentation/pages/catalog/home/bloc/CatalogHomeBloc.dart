@@ -1,4 +1,5 @@
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
+import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogHomeData.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'CatalogHomeEvent.dart';
@@ -14,10 +15,10 @@ class CatalogHomeBloc extends Bloc<CatalogHomeEvent, CatalogHomeState> {
   Future<void> _onLoad(CatalogHomeLoad event, Emitter<CatalogHomeState> emit) async {
     emit(CatalogHomeLoading());
     final result = await _service.getHome();
-    if (result is Success) {
-      emit(CatalogHomeLoaded(result.data!));
-    } else if (result is Error) {
-      emit(CatalogHomeError(result.message ?? 'Error desconocido'));
+    if (result is Success<CatalogHomeData>) {
+      emit(CatalogHomeLoaded(result.data));
+    } else if (result is Error<CatalogHomeData>) {
+      emit(CatalogHomeError(result.message));
     }
   }
 }

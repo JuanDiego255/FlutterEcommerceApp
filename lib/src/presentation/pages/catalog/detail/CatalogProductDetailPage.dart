@@ -66,19 +66,25 @@ class _DetailViewState extends State<_DetailView> {
     setState(() => _loadingDetail = true);
     final result = await _service.getProductDetail(widget.product.id);
     if (!mounted) return;
+
+    CatalogProductDetail? detail;
+    String? error;
+
+    if (result is Success<Map<String, dynamic>>) {
+      final data = result.data['data'] as Map<String, dynamic>?;
+      if (data != null) {
+        detail = CatalogProductDetail.fromJson(data);
+      } else {
+        error = 'Respuesta inválida del servidor';
+      }
+    } else if (result is Error<Map<String, dynamic>>) {
+      error = result.message;
+    }
+
     setState(() {
       _loadingDetail = false;
-      if (result is Success) {
-        final body = result.data!;
-        final data = body['data'] as Map<String, dynamic>?;
-        if (data != null) {
-          _detail = CatalogProductDetail.fromJson(data);
-        } else {
-          _detailError = 'Respuesta inválida del servidor';
-        }
-      } else if (result is Error) {
-        _detailError = (result as Error<Map<String, dynamic>>).message ?? 'Error desconocido';
-      }
+      _detail = detail;
+      _detailError = error;
     });
   }
 
