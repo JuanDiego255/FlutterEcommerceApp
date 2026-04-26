@@ -680,7 +680,6 @@ class _FeaturedCardState extends State<_FeaturedCard> {
   Widget build(BuildContext context) {
     final p = widget.product;
     final attrs = p.availableAttrs;
-    const maxVisible = 3;
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -776,27 +775,26 @@ class _FeaturedCardState extends State<_FeaturedCard> {
                             fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent)),
                   if (attrs.isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: [
-                        for (int i = 0; i < attrs.length && i < maxVisible; i++)
-                          _AttrChip(label: attrs[i]),
-                        if (attrs.length > maxVisible)
-                          GestureDetector(
-                            onTap: () => _showVariantPicker(context, attrs),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5F0EB),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text('+${attrs.length - maxVisible}',
-                                  style: const TextStyle(
-                                      fontSize: 10, color: _kAccent, fontWeight: FontWeight.w600)),
-                            ),
-                          ),
-                      ],
+                    GestureDetector(
+                      onTap: () => _showSizesSheet(context, attrs),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _kAccent.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: _kAccent.withOpacity(0.3)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.straighten_outlined, size: 11, color: _kAccent),
+                            SizedBox(width: 4),
+                            Text('Ver tallas',
+                                style: TextStyle(fontSize: 10, color: _kAccent, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ],
@@ -874,6 +872,53 @@ Future<String?> _showVariantPicker(BuildContext context, List<String> attrs) {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (_) => _VariantPickerSheet(attrs: attrs),
   );
+}
+
+void _showSizesSheet(BuildContext context, List<String> attrs) {
+  showModalBottomSheet<void>(
+    context: context,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (_) => _SizesSheet(attrs: attrs),
+  );
+}
+
+class _SizesSheet extends StatelessWidget {
+  final List<String> attrs;
+  const _SizesSheet({required this.attrs});
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Container(width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 16),
+            const Text('Variantes disponibles',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+            const SizedBox(height: 14),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Wrap(
+                  spacing: 8, runSpacing: 8,
+                  children: attrs.map((a) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F0EB),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _kAccent.withOpacity(0.3)),
+                    ),
+                    child: Text(a,
+                        style: const TextStyle(fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600)),
+                  )).toList(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class _VariantPickerSheet extends StatelessWidget {
@@ -989,6 +1034,18 @@ class _ErrorView extends StatelessWidget {
                 ),
                 icon: const Icon(Icons.refresh, size: 16),
                 label: const Text('Reintentar'),
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () async {
+                  await TenantSession.clear();
+                  if (context.mounted) {
+                    Navigator.pushReplacementNamed(context, 'tenant/select');
+                  }
+                },
+                icon: const Icon(Icons.swap_horiz_outlined, size: 16, color: _kSub),
+                label: const Text('Cambiar tienda',
+                    style: TextStyle(color: _kSub, fontSize: 13)),
               ),
             ],
           ),

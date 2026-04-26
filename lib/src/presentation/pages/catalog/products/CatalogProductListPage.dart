@@ -91,6 +91,7 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
   }
 
   void _onScroll() {
+    if (!_scrollCtrl.hasClients) return;
     if (_loadMoreTriggered) return;
     if (_scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 200) {
       final state = context.read<CatalogProductsBloc>().state;
@@ -179,7 +180,10 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
           _buildSearchBar(),
           if (widget.isDept && (_loadingCategories || _subCategories.isNotEmpty))
             _buildCategoryChips(),
-          if (_attrGroups.isNotEmpty) _buildAttrFilters(),
+          if (_attrGroups.isNotEmpty) ...[
+            const SliverToBoxAdapter(child: SizedBox(height: 8)),
+            _buildAttrFilters(),
+          ],
           _buildProductGrid(),
           _buildLoadMoreIndicator(),
           const SliverToBoxAdapter(child: SizedBox(height: 80)),
@@ -625,11 +629,33 @@ class _ProductCardState extends State<_ProductCard> {
                     Text('₡${fmtPrice(p.price)}',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent)),
                   if (p.availableAttrs.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(p.availableAttrs.join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 10, color: _kSub)),
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: () => showModalBottomSheet(
+                        context: context,
+                        shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                        builder: (_) => _VariantInfoSheet(attrs: p.availableAttrs),
+                      ),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _kAccent.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: _kAccent.withOpacity(0.3)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.straighten_outlined, size: 11, color: _kAccent),
+                            SizedBox(width: 4),
+                            Text('Ver tallas',
+                                style: TextStyle(fontSize: 10, color: _kAccent, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -643,6 +669,44 @@ class _ProductCardState extends State<_ProductCard> {
   Widget _placeholder() => Container(
         color: const Color(0xFFF5F5F5),
         child: const Center(child: Icon(Icons.image_outlined, size: 36, color: Color(0xFFBDBDBD))),
+      );
+}
+
+class _VariantInfoSheet extends StatelessWidget {
+  final List<String> attrs;
+  const _VariantInfoSheet({required this.attrs});
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Container(width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 16),
+            const Text('Variantes disponibles',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+            const SizedBox(height: 14),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Wrap(
+                  spacing: 8, runSpacing: 8,
+                  children: attrs.map((a) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F0EB),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _kAccent.withOpacity(0.3)),
+                    ),
+                    child: Text(a,
+                        style: const TextStyle(fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600)),
+                  )).toList(),
+                ),
+              ),
+            ),
+          ],
+        ),
       );
 }
 

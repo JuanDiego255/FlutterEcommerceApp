@@ -472,7 +472,14 @@ class _DetailViewState extends State<_DetailView> {
   // ─── Description ─────────────────────────────────────────────────────────────
 
   Widget _buildDescription() {
-    final desc = _detail!.description!;
+    final desc = _detail!.description!
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .replaceAll(RegExp(r'&nbsp;'), ' ')
+        .replaceAll(RegExp(r'&amp;'), '&')
+        .replaceAll(RegExp(r'&lt;'), '<')
+        .replaceAll(RegExp(r'&gt;'), '>')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
     final isLong = desc.length > 200;
     final displayText =
         isLong && !_descExpanded ? '${desc.substring(0, 200)}...' : desc;
