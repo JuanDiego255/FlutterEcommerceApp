@@ -10,7 +10,8 @@ class CatalogProduct {
   final int manageStock;
   final int totalStock;
   final String? image;
-  final List<String> availableAttrs;
+  // Map of attribute name → list of values  e.g. {'Tallas': ['XS','S'], 'Colores': ['Blanco']}
+  final Map<String, List<String>> attrGroups;
 
   const CatalogProduct({
     required this.id,
@@ -22,8 +23,12 @@ class CatalogProduct {
     required this.manageStock,
     required this.totalStock,
     this.image,
-    required this.availableAttrs,
+    this.attrGroups = const {},
   });
+
+  // Flat list of all variant values across all attributes (used for wishlist picking)
+  List<String> get availableAttrs =>
+      attrGroups.values.expand((v) => v).toList();
 
   bool get hasDiscount => discount > 0;
   double get finalPrice =>
@@ -52,10 +57,21 @@ class CatalogProduct {
       return def;
     }
 
-    final rawAttrs = j['available_attr'] as String? ?? '';
-    final attrs = rawAttrs.isNotEmpty
-        ? rawAttrs.split(',').where((s) => s.isNotEmpty).toList()
-        : <String>[];
+    // Parse grouped attributes from "AttrName|value,AttrName|value2" format
+    final rawGroups = j['available_attr_groups'] as String? ?? '';
+    final Map<String, List<String>> attrGroups = {};
+    if (rawGroups.isNotEmpty) {
+      for (final entry in rawGroups.split(',')) {
+        final idx = entry.indexOf('|');
+        if (idx > 0) {
+          final name = entry.substring(0, idx).trim();
+          final val  = entry.substring(idx + 1).trim();
+          if (name.isNotEmpty && val.isNotEmpty) {
+            attrGroups.putIfAbsent(name, () => []).add(val);
+          }
+        }
+      }
+    }
 
     return CatalogProduct(
       id: _i(j['id']),
@@ -67,7 +83,7 @@ class CatalogProduct {
       manageStock: _i(j['manage_stock']),
       totalStock: _i(j['total_stock']),
       image: j['image']?.toString(),
-      availableAttrs: attrs,
+      attrGroups: attrGroups,
     );
   }
 
@@ -81,7 +97,9 @@ class CatalogProduct {
         'manage_stock': manageStock,
         'total_stock': totalStock,
         'image': image,
-        'available_attr': availableAttrs.join(','),
+        'available_attr_groups': attrGroups.entries
+            .expand((e) => e.value.map((v) => '${e.key}|$v'))
+            .join(','),
       };
 
   static List<CatalogProduct> fromJsonList(List<dynamic> list) =>

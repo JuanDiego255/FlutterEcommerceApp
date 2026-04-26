@@ -97,6 +97,31 @@ class CatalogService {
     }
   }
 
+  // ─── Global search (all categories) ─────────────────────────────────────
+
+  Future<Resource<Map<String, dynamic>>> globalSearch(
+    String query, {
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    try {
+      final params = <String, String>{
+        'q': query,
+        'page': '$page',
+        'per_page': '$perPage',
+      };
+      final url = Uri.https(_host, '/api/catalog/search/$_tenant', params);
+      final res = await http.get(url, headers: _headers)
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        return Success(json.decode(res.body) as Map<String, dynamic>);
+      }
+      return Error(_parseError(res, 'Error al buscar productos'));
+    } catch (e) {
+      return Error(e.toString());
+    }
+  }
+
   // ─── Attributes for filter ────────────────────────────────────────────────
 
   Future<Resource<List<dynamic>>> getAttributesByCategory(int categoryId) async {

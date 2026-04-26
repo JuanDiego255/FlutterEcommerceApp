@@ -15,12 +15,15 @@ class CatalogProductsBloc extends Bloc<CatalogProductsEvent, CatalogProductsStat
 
   Future<void> _onLoad(CatalogProductsLoad event, Emitter<CatalogProductsState> emit) async {
     emit(CatalogProductsLoading());
-    final result = await _service.getProductsByCategory(
-      event.categoryId,
-      page: 1,
-      search: event.search,
-      attrValues: event.attrValues,
-    );
+    // categoryId == 0 signals a global search across all categories
+    final result = event.categoryId == 0
+        ? await _service.globalSearch(event.search, page: 1, perPage: 20)
+        : await _service.getProductsByCategory(
+            event.categoryId,
+            page: 1,
+            search: event.search,
+            attrValues: event.attrValues,
+          );
     if (result is Success<Map<String, dynamic>>) {
       final data = result.data;
       final items = _parseProducts(data);
@@ -51,12 +54,15 @@ class CatalogProductsBloc extends Bloc<CatalogProductsEvent, CatalogProductsStat
       attrValues: current.attrValues,
     ));
 
-    final result = await _service.getProductsByCategory(
-      current.categoryId,
-      page: nextPage,
-      search: current.search,
-      attrValues: current.attrValues,
-    );
+    final result = current.categoryId == 0
+        ? await _service.globalSearch(current.search, page: nextPage, perPage: 20)
+        : await _service.getProductsByCategory(
+            current.categoryId,
+            page: nextPage,
+            search: current.search,
+            attrValues: current.attrValues,
+          );
+
     if (result is Success<Map<String, dynamic>>) {
       final data = result.data;
       final newItems = _parseProducts(data);
@@ -87,7 +93,11 @@ class CatalogProductsBloc extends Bloc<CatalogProductsEvent, CatalogProductsStat
   }
 
   int _lastPage(Map<String, dynamic> data) {
+    // API returns 'pagination' key (HomeDataController / globalSearch)
+    final pag = data['pagination'] as Map<String, dynamic>?;
+    if (pag != null) return (pag['last_page'] as int?) ?? 1;
+    // Fall back to 'meta' key if ever used
     final meta = data['meta'] as Map<String, dynamic>?;
-    return meta?['last_page'] as int? ?? 1;
+    return (meta?['last_page'] as int?) ?? 1;
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
@@ -68,6 +70,7 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
   List<Map<String, dynamic>> _attrGroups = [];
   final Set<String> _selectedAttrs = {};
   bool _loadingAttrs = false;
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -77,6 +80,8 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
 
     if (widget.isDept) {
       _loadCategories();
+    } else if (widget.item.id < 0) {
+      _loadProducts(0, search: widget.initialSearch);
     } else {
       _loadProducts(widget.item.id, search: widget.initialSearch);
       _loadAttributes(widget.item.id);
@@ -85,6 +90,7 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
@@ -151,9 +157,14 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
     );
   }
 
+  void _onSearchChanged(String _) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), _search);
+  }
+
   void _search() {
     final q = _searchCtrl.text.trim();
-    final catId = _selectedCategory?.id ?? widget.item.id;
+    final catId = widget.item.id < 0 ? 0 : (_selectedCategory?.id ?? widget.item.id);
     _loadProducts(catId, search: q);
   }
 
@@ -203,7 +214,7 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          widget.item.name,
+          widget.item.id < 0 ? 'Resultados' : widget.item.name,
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
@@ -218,10 +229,16 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
           child: TextField(
             controller: _searchCtrl,
             textInputAction: TextInputAction.search,
-            onSubmitted: (_) => _search(),
+            onChanged: _onSearchChanged,
+            onSubmitted: (_) {
+              _debounce?.cancel();
+              _search();
+            },
             style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
-              hintText: 'Buscar en ${widget.item.name}...',
+              hintText: widget.item.id < 0
+                  ? 'Buscar en todo el catálogo...'
+                  : 'Buscar en ${widget.item.name}...',
               hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
               prefixIcon: const Icon(Icons.search, color: _kAccent, size: 20),
               suffixIcon: ValueListenableBuilder<TextEditingValue>(
@@ -566,6 +583,8 @@ class _ProductCardState extends State<_ProductCard> {
                             imageUrl: p.imageUrl,
                             width: double.infinity,
                             fit: BoxFit.cover,
+                            memCacheWidth: 400,
+                            memCacheHeight: 400,
                             placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
                             errorWidget: (_, __, ___) => _placeholder(),
                           )
@@ -628,14 +647,14 @@ class _ProductCardState extends State<_ProductCard> {
                   ] else
                     Text('₡${fmtPrice(p.price)}',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent)),
-                  if (p.availableAttrs.isNotEmpty) ...[
+                  if (p.attrGroups.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     GestureDetector(
                       onTap: () => showModalBottomSheet(
                         context: context,
                         shape: const RoundedRectangleBorder(
                             borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-                        builder: (_) => _VariantInfoSheet(attrs: p.availableAttrs),
+                        builder: (_) => _VariantInfoSheet(attrGroups: p.attrGroups),
                       ),
                       behavior: HitTestBehavior.opaque,
                       child: Container(
@@ -648,9 +667,9 @@ class _ProductCardState extends State<_ProductCard> {
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.straighten_outlined, size: 11, color: _kAccent),
+                            Icon(Icons.style_outlined, size: 11, color: _kAccent),
                             SizedBox(width: 4),
-                            Text('Ver tallas',
+                            Text('Ver atributos',
                                 style: TextStyle(fontSize: 10, color: _kAccent, fontWeight: FontWeight.w600)),
                           ],
                         ),
@@ -673,8 +692,8 @@ class _ProductCardState extends State<_ProductCard> {
 }
 
 class _VariantInfoSheet extends StatelessWidget {
-  final List<String> attrs;
-  const _VariantInfoSheet({required this.attrs});
+  final Map<String, List<String>> attrGroups;
+  const _VariantInfoSheet({required this.attrGroups});
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
@@ -685,22 +704,36 @@ class _VariantInfoSheet extends StatelessWidget {
             Center(child: Container(width: 40, height: 4,
                 decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 16),
-            const Text('Variantes disponibles',
+            const Text('Atributos disponibles',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
             const SizedBox(height: 14),
             Flexible(
               child: SingleChildScrollView(
-                child: Wrap(
-                  spacing: 8, runSpacing: 8,
-                  children: attrs.map((a) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F0EB),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _kAccent.withOpacity(0.3)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: attrGroups.entries.map((e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(e.key,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kSub)),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6, runSpacing: 6,
+                          children: e.value.map((v) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF5F0EB),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: _kAccent.withOpacity(0.3)),
+                            ),
+                            child: Text(v,
+                                style: const TextStyle(fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600)),
+                          )).toList(),
+                        ),
+                      ],
                     ),
-                    child: Text(a,
-                        style: const TextStyle(fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600)),
                   )).toList(),
                 ),
               ),

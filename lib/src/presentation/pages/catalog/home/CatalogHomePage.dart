@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
@@ -13,6 +15,9 @@ import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/bloc/Catal
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+// Virtual "Inicio" nav item (id < 0 → never maps to a real category)
+final _kHomeNavItem = CatalogNavItem(id: -1, name: 'Inicio', image: null);
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const _kPrimary  = Color(0xFF2D2D2D);
@@ -92,8 +97,15 @@ class _ContentView extends StatefulWidget {
 
 class _ContentViewState extends State<_ContentView> {
   int _selectedNavIdx = 0;
+  Timer? _debounce;
 
   CatalogHomeData get data => widget.data;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
 
   void _openProducts(CatalogNavItem item, {bool isDept = false}) {
     Navigator.pushNamed(
@@ -106,17 +118,15 @@ class _ContentViewState extends State<_ContentView> {
     );
   }
 
-  void _search() {
-    final q = widget.searchCtrl.text.trim();
+  void _doSearch(String q) {
+    q = q.trim();
     if (q.isEmpty) return;
-    // Navigate to first nav item's products with search, or all if no nav
-    if (data.navItems.isEmpty) return;
     Navigator.pushNamed(
       context,
       'catalog/products',
       arguments: {
-        'item': data.navItems.first,
-        'is_department': data.navType == 'departments',
+        'item': const CatalogNavItem(id: -1, name: 'Resultados'),
+        'is_department': false,
         'search': q,
       },
     );
@@ -131,7 +141,7 @@ class _ContentViewState extends State<_ContentView> {
           _buildCintillo(),
         _buildSearchBar(),
         _buildNavSection(),
-        _buildFeaturedSection(),
+        ..._buildFeaturedSlivers(),
         _buildFooter(),
         const SliverToBoxAdapter(child: SizedBox(height: 80)),
       ],
@@ -255,7 +265,14 @@ class _ContentViewState extends State<_ContentView> {
       child: TextField(
         controller: widget.searchCtrl,
         textInputAction: TextInputAction.search,
-        onSubmitted: (_) => _search(),
+        onChanged: (v) {
+          _debounce?.cancel();
+          _debounce = Timer(const Duration(milliseconds: 600), () => _doSearch(v));
+        },
+        onSubmitted: (_) {
+          _debounce?.cancel();
+          _doSearch(widget.searchCtrl.text);
+        },
         style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
           hintText: 'Buscar productos...',
@@ -294,6 +311,7 @@ class _ContentViewState extends State<_ContentView> {
 
   SliverToBoxAdapter _buildNavSection() {
     if (data.navItems.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    final navAll = [_kHomeNavItem, ...data.navItems];
     return SliverToBoxAdapter(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,17 +332,19 @@ class _ContentViewState extends State<_ContentView> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: data.navItems.length,
+              itemCount: navAll.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (_, i) {
-                final item = data.navItems[i];
+                final item = navAll[i];
                 final isSelected = i == _selectedNavIdx;
                 return _NavChip(
                   item: item,
                   isSelected: isSelected,
                   onTap: () {
                     setState(() => _selectedNavIdx = i);
-                    _openProducts(item, isDept: data.navType == 'departments');
+                    if (item.id >= 0) {
+                      _openProducts(item, isDept: data.navType == 'departments');
+                    }
                   },
                 );
               },
@@ -338,33 +358,29 @@ class _ContentViewState extends State<_ContentView> {
 
   // ─── Featured products section ────────────────────────────────────────────
 
-  SliverToBoxAdapter _buildFeaturedSection() {
-    if (data.featured.isEmpty) {
-      return const SliverToBoxAdapter(child: SizedBox.shrink());
-    }
-    return SliverToBoxAdapter(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Text(
-              'Destacados',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary),
-            ),
+  List<Widget> _buildFeaturedSlivers() {
+    if (data.featured.isEmpty) return [];
+    return [
+      const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Text(
+            'Destacados',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary),
           ),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.65,
-            ),
-            itemCount: data.featured.length,
-            itemBuilder: (_, i) => _FeaturedCard(
+        ),
+      ),
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.65,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (_, i) => _FeaturedCard(
               product: data.featured[i],
               onTap: () => Navigator.pushNamed(
                 context,
@@ -372,10 +388,11 @@ class _ContentViewState extends State<_ContentView> {
                 arguments: {'product': data.featured[i]},
               ).then((_) => setState(() {})),
             ),
+            childCount: data.featured.length,
           ),
-        ],
+        ),
       ),
-    );
+    ];
   }
 
   // ─── Footer ───────────────────────────────────────────────────────────────
@@ -630,7 +647,7 @@ class _NavChip extends StatelessWidget {
   }
 
   Widget _categoryIcon(bool selected) => Icon(
-        Icons.category_outlined,
+        item.id < 0 ? Icons.home_rounded : Icons.category_outlined,
         size: 22,
         color: selected ? _kAccent : _kSub,
       );
@@ -704,6 +721,8 @@ class _FeaturedCardState extends State<_FeaturedCard> {
                             imageUrl: p.imageUrl,
                             width: double.infinity,
                             fit: BoxFit.cover,
+                            memCacheWidth: 400,
+                            memCacheHeight: 400,
                             placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
                             errorWidget: (_, __, ___) => _imgPlaceholder(),
                           )
@@ -776,7 +795,7 @@ class _FeaturedCardState extends State<_FeaturedCard> {
                   if (attrs.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     GestureDetector(
-                      onTap: () => _showSizesSheet(context, attrs),
+                      onTap: () => _showGroupedAttrsSheet(context, p.attrGroups),
                       behavior: HitTestBehavior.opaque,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -788,9 +807,9 @@ class _FeaturedCardState extends State<_FeaturedCard> {
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.straighten_outlined, size: 11, color: _kAccent),
+                            Icon(Icons.style_outlined, size: 11, color: _kAccent),
                             SizedBox(width: 4),
-                            Text('Ver tallas',
+                            Text('Ver atributos',
                                 style: TextStyle(fontSize: 10, color: _kAccent, fontWeight: FontWeight.w600)),
                           ],
                         ),
@@ -874,18 +893,18 @@ Future<String?> _showVariantPicker(BuildContext context, List<String> attrs) {
   );
 }
 
-void _showSizesSheet(BuildContext context, List<String> attrs) {
+void _showGroupedAttrsSheet(BuildContext context, Map<String, List<String>> attrGroups) {
   showModalBottomSheet<void>(
     context: context,
     shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (_) => _SizesSheet(attrs: attrs),
+    builder: (_) => _GroupedAttrsSheet(attrGroups: attrGroups),
   );
 }
 
-class _SizesSheet extends StatelessWidget {
-  final List<String> attrs;
-  const _SizesSheet({required this.attrs});
+class _GroupedAttrsSheet extends StatelessWidget {
+  final Map<String, List<String>> attrGroups;
+  const _GroupedAttrsSheet({required this.attrGroups});
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
@@ -896,22 +915,36 @@ class _SizesSheet extends StatelessWidget {
             Center(child: Container(width: 40, height: 4,
                 decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 16),
-            const Text('Variantes disponibles',
+            const Text('Atributos disponibles',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
             const SizedBox(height: 14),
             Flexible(
               child: SingleChildScrollView(
-                child: Wrap(
-                  spacing: 8, runSpacing: 8,
-                  children: attrs.map((a) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F0EB),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _kAccent.withOpacity(0.3)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: attrGroups.entries.map((e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(e.key,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kSub)),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6, runSpacing: 6,
+                          children: e.value.map((v) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF5F0EB),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: _kAccent.withOpacity(0.3)),
+                            ),
+                            child: Text(v,
+                                style: const TextStyle(fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600)),
+                          )).toList(),
+                        ),
+                      ],
                     ),
-                    child: Text(a,
-                        style: const TextStyle(fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600)),
                   )).toList(),
                 ),
               ),
