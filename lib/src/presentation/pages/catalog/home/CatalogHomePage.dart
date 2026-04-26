@@ -10,6 +10,7 @@ import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/bloc/CatalogHomeBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/bloc/CatalogHomeEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/bloc/CatalogHomeState.dart';
+import 'package:ecommerce_flutter/src/presentation/widgets/FullScreenImagePage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -111,7 +112,9 @@ class _ContentViewState extends State<_ContentView> {
         'item': item,
         'is_department': isDept,
       },
-    );
+    ).then((_) {
+      if (mounted) setState(() => _selectedNavIdx = 0);
+    });
   }
 
   void _doSearch(String q) {
@@ -760,6 +763,21 @@ class _FeaturedCardState extends State<_FeaturedCard> {
                       ),
                     ),
                   ),
+                  if (p.imageUrl.isNotEmpty)
+                    Positioned(
+                      bottom: 8, right: 8,
+                      child: GestureDetector(
+                        onTap: () => FullScreenImagePage.show(context, [p.imageUrl]),
+                        child: Container(
+                          width: 28, height: 28,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.45),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(Icons.fullscreen, color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

@@ -6,6 +6,7 @@ import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProductDetail
 import 'package:ecommerce_flutter/src/domain/models/catalog/WishlistItem.dart';
 import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
+import 'package:ecommerce_flutter/src/presentation/widgets/FullScreenImagePage.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -241,7 +242,7 @@ class _DetailViewState extends State<_DetailView> {
       final single = widget.product.imageUrl;
       if (single.isEmpty) {
         return AspectRatio(
-          aspectRatio: 1,
+          aspectRatio: 4 / 5,
           child: Container(
             color: const Color(0xFFF5F5F5),
             child: const Center(
@@ -250,32 +251,50 @@ class _DetailViewState extends State<_DetailView> {
           ),
         );
       }
-      return AspectRatio(
-        aspectRatio: 1,
-        child: CachedNetworkImage(
-          imageUrl: single,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
-          errorWidget: (_, __, ___) => _imagePlaceholder(),
-        ),
+      return Stack(
+        children: [
+          GestureDetector(
+            onTap: () => FullScreenImagePage.show(context, [single]),
+            child: AspectRatio(
+              aspectRatio: 4 / 5,
+              child: CachedNetworkImage(
+                imageUrl: single,
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
+                errorWidget: (_, __, ___) => _imagePlaceholder(),
+              ),
+            ),
+          ),
+          _buildExpandButton([single], 0),
+        ],
       );
     }
 
     return Column(
       children: [
-        AspectRatio(
-          aspectRatio: 1,
-          child: PageView.builder(
-            controller: _pageCtrl,
-            itemCount: urls.length,
-            onPageChanged: (i) => setState(() => _imageIndex = i),
-            itemBuilder: (_, i) => CachedNetworkImage(
-              imageUrl: urls[i],
-              fit: BoxFit.cover,
-              placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
-              errorWidget: (_, __, ___) => _imagePlaceholder(),
+        Stack(
+          children: [
+            GestureDetector(
+              onTap: () => FullScreenImagePage.show(context, urls, index: _imageIndex),
+              child: AspectRatio(
+                aspectRatio: 4 / 5,
+                child: PageView.builder(
+                  controller: _pageCtrl,
+                  itemCount: urls.length,
+                  onPageChanged: (i) => setState(() => _imageIndex = i),
+                  itemBuilder: (_, i) => CachedNetworkImage(
+                    imageUrl: urls[i],
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                    placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
+                    errorWidget: (_, __, ___) => _imagePlaceholder(),
+                  ),
+                ),
+              ),
             ),
-          ),
+            _buildExpandButton(urls, _imageIndex),
+          ],
         ),
         if (urls.length > 1) ...[
           const SizedBox(height: 12),
@@ -300,6 +319,23 @@ class _DetailViewState extends State<_DetailView> {
       ],
     );
   }
+
+  Widget _buildExpandButton(List<String> urls, int index) => Positioned(
+        bottom: 10,
+        right: 10,
+        child: GestureDetector(
+          onTap: () => FullScreenImagePage.show(context, urls, index: index),
+          child: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.45),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.fullscreen, color: Colors.white, size: 20),
+          ),
+        ),
+      );
 
   Widget _imagePlaceholder() => Container(
         color: const Color(0xFFF5F5F5),

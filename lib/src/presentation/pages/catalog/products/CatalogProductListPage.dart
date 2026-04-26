@@ -11,6 +11,7 @@ import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/products/bloc/CatalogProductsBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/products/bloc/CatalogProductsEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/products/bloc/CatalogProductsState.dart';
+import 'package:ecommerce_flutter/src/presentation/widgets/FullScreenImagePage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -627,6 +628,21 @@ class _ProductCardState extends State<_ProductCard> {
                       ),
                     ),
                   ),
+                  if (p.imageUrl.isNotEmpty)
+                    Positioned(
+                      bottom: 8, right: 8,
+                      child: GestureDetector(
+                        onTap: () => FullScreenImagePage.show(context, [p.imageUrl]),
+                        child: Container(
+                          width: 28, height: 28,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.45),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(Icons.fullscreen, color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
