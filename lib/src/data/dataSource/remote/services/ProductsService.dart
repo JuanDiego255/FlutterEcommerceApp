@@ -77,7 +77,7 @@ class ProductsService {
       request.headers['Authorization'] = await token;
       if (files != null) {
         if (files.isNotEmpty) {
-          files?.forEach((file) async {
+          files.forEach((file) async {
             request.files.add(http.MultipartFile(
               'files[]',
               http.ByteStream(file.openRead().cast()),

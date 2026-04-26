@@ -50,7 +50,7 @@ const _kTenants = [
     name: 'FUT Store',
     subtitle: 'Tienda de fútbol y deportes',
     location: 'Grecia, Alajuela',
-    domain: 'futstore.safeworsolutions.com',
+    domain: 'futstorecr.safeworsolutions.com',
     icon: Icons.sports_soccer_outlined,
     color: Color(0xFF2E7D32),
   ),
