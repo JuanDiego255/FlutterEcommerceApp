@@ -478,7 +478,7 @@ class _CatalogProductListViewState extends State<_CatalogProductListView> {
               crossAxisCount: 2,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 0.72,
+              childAspectRatio: 0.62,
             ),
             delegate: SliverChildBuilderDelegate(
               (context, i) => _ProductCard(
@@ -583,6 +583,7 @@ class _ProductCardState extends State<_ProductCard> {
                             imageUrl: p.imageUrl,
                             width: double.infinity,
                             fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
                             memCacheWidth: 400,
                             memCacheHeight: 400,
                             placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
@@ -650,12 +651,19 @@ class _ProductCardState extends State<_ProductCard> {
                   if (p.attrGroups.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     GestureDetector(
-                      onTap: () => showModalBottomSheet(
-                        context: context,
-                        shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-                        builder: (_) => _VariantInfoSheet(attrGroups: p.attrGroups),
-                      ),
+                      onTap: () async {
+                        final picked = await showModalBottomSheet<String>(
+                          context: context,
+                          isScrollControlled: true,
+                          shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                          builder: (_) => _SelectableAttrsSheet(attrGroups: p.attrGroups),
+                        );
+                        if (!mounted || picked == null) return;
+                        if (_inWishlist) await WishlistService.remove(p.id);
+                        await WishlistService.add(WishlistItem(product: p, variantLabel: picked));
+                        if (mounted) setState(() => _inWishlist = true);
+                      },
                       behavior: HitTestBehavior.opaque,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -691,56 +699,112 @@ class _ProductCardState extends State<_ProductCard> {
       );
 }
 
-class _VariantInfoSheet extends StatelessWidget {
+class _SelectableAttrsSheet extends StatefulWidget {
   final Map<String, List<String>> attrGroups;
-  const _VariantInfoSheet({required this.attrGroups});
+  const _SelectableAttrsSheet({required this.attrGroups});
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(child: Container(width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
-            const SizedBox(height: 16),
-            const Text('Atributos disponibles',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
-            const SizedBox(height: 14),
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: attrGroups.entries.map((e) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(e.key,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kSub)),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 6, runSpacing: 6,
-                          children: e.value.map((v) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF5F0EB),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: _kAccent.withOpacity(0.3)),
+  State<_SelectableAttrsSheet> createState() => _SelectableAttrsSheetState();
+}
+
+class _SelectableAttrsSheetState extends State<_SelectableAttrsSheet> {
+  final Map<String, String> _selected = {};
+
+  String _buildLabel() {
+    if (_selected.isEmpty) {
+      final first = widget.attrGroups.entries.first;
+      return '${first.key}: ${first.value.first}';
+    }
+    return _selected.entries.map((e) => '${e.key}: ${e.value}').join(' / ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 32 + MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Atributos disponibles',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+          const SizedBox(height: 14),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: widget.attrGroups.entries.map((e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(e.key,
+                          style: const TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w600, color: _kSub)),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: e.value.map((v) {
+                          final isSel = _selected[e.key] == v;
+                          return GestureDetector(
+                            onTap: () => setState(() {
+                              if (isSel) {
+                                _selected.remove(e.key);
+                              } else {
+                                _selected[e.key] = v;
+                              }
+                            }),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSel ? _kAccent : const Color(0xFFF5F0EB),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: _kAccent.withOpacity(isSel ? 1.0 : 0.3)),
+                              ),
+                              child: Text(v,
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: isSel ? Colors.white : _kAccent,
+                                      fontWeight: FontWeight.w600)),
                             ),
-                            child: Text(v,
-                                style: const TextStyle(fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600)),
-                          )).toList(),
-                        ),
-                      ],
-                    ),
-                  )).toList(),
-                ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                )).toList(),
               ),
             ),
-          ],
-        ),
-      );
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context, _buildLabel()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _kAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.favorite, size: 16),
+              label: const Text('Guardar en favoritos',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _VariantSheet extends StatelessWidget {

@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/WishlistItem.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WishlistService {
-  static const _key = 'catalog_wishlist';
+  // Per-tenant key — switching tenants never leaks another store's wishlist.
+  static String get _key => 'catalog_wishlist_${TenantSession.host}';
 
   static Future<List<WishlistItem>> getAll() async {
     final prefs = await SharedPreferences.getInstance();
@@ -69,6 +71,36 @@ class WishlistService {
       }
     });
     await prefs.setStringList(_key, jsonList);
+  }
+
+  static Future<void> updateVariant(int productId, String? variantLabel, [double? variantPrice]) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = prefs.getStringList(_key) ?? [];
+    final updated = jsonList.map((s) {
+      try {
+        final m = json.decode(s) as Map<String, dynamic>;
+        final id = m.containsKey('product')
+            ? (m['product'] as Map<String, dynamic>)['id']
+            : m['id'];
+        if (id == productId) {
+          if (m.containsKey('product')) {
+            if (variantLabel != null) {
+              m['variant_label'] = variantLabel;
+            } else {
+              m.remove('variant_label');
+            }
+            if (variantPrice != null && variantPrice > 0) {
+              m['variant_price'] = variantPrice;
+            } else {
+              m.remove('variant_price');
+            }
+          }
+          return json.encode(m);
+        }
+      } catch (_) {}
+      return s;
+    }).toList();
+    await prefs.setStringList(_key, updated);
   }
 
   static Future<void> clear() async {

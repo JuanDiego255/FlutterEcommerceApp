@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogHomeData.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogNavItem.dart';
+import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProduct.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:http/http.dart' as http;
 
@@ -116,6 +117,23 @@ class CatalogService {
         return Success(json.decode(res.body) as Map<String, dynamic>);
       }
       return Error(_parseError(res, 'Error al buscar productos'));
+    } catch (e) {
+      return Error(e.toString());
+    }
+  }
+
+  // ─── Product variants ─────────────────────────────────────────────────────
+
+  Future<Resource<List<dynamic>>> getProductVariants(int productId) async {
+    try {
+      final url = Uri.https(_host, '/api/products/$productId/variants/$_tenant');
+      final res = await http.get(url, headers: _headers)
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final body = json.decode(res.body) as Map<String, dynamic>;
+        return Success(body['data'] as List<dynamic>? ?? []);
+      }
+      return Error(_parseError(res, 'Error al cargar variantes'));
     } catch (e) {
       return Error(e.toString());
     }
