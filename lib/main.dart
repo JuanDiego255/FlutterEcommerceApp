@@ -75,7 +75,7 @@ class _MyAppState extends State<MyApp> {
         builder: FToastBuilder(),
         navigatorKey: navigatorKey,
         debugShowCheckedModeBanner: false,
-        title: 'Flutter Demo',
+        title: 'SafeWor Solutions',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
