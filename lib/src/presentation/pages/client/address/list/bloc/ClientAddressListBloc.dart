@@ -1,6 +1,4 @@
 import 'dart:convert';
-
-import 'package:ecommerce_flutter/src/data/api/ApiConfig.dart';
 import 'package:ecommerce_flutter/src/domain/models/Address.dart';
 import 'package:ecommerce_flutter/src/domain/models/AuthResponse.dart';
 import 'package:ecommerce_flutter/src/domain/models/MercadoPagoPaymentBody.dart';
@@ -8,7 +6,6 @@ import 'package:ecommerce_flutter/src/domain/models/Product.dart';
 import 'package:ecommerce_flutter/src/domain/useCases/ShoppingBag/ShoppingBagUseCases.dart';
 import 'package:ecommerce_flutter/src/domain/useCases/address/AddressUseCases.dart';
 import 'package:ecommerce_flutter/src/domain/useCases/auth/AuthUseCases.dart';
-import 'package:ecommerce_flutter/src/domain/useCases/categories/CategoriesUseCases.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/address/list/bloc/ClientAddressListEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/address/list/bloc/ClientAddressListState.dart';
@@ -69,7 +66,7 @@ class ClientAddressListBloc extends Bloc<ClientAddressListEvent, ClientAddressLi
 
   Future<void> _onPaymentStripeSubmit(OnPaymentStripeSubmit event, Emitter<ClientAddressListState> emit) async {
     final response = await http.post(
-      Uri.parse('https://${ApiConfig.NGROK_URL}/payment_stripe/create'),
+      Uri.parse('https://payment_stripe/create'),
     );
     print('RESPONSE STATUS: ${response.statusCode}');
     print('RESPONSE BODY: ${response.body}');
@@ -110,12 +107,12 @@ class ClientAddressListBloc extends Bloc<ClientAddressListEvent, ClientAddressLi
   }
 
   Future<void> _onPaymentSubmit(OnPaymentSubmit event, Emitter<ClientAddressListState> emit) async {
-    double totalToPay = await shoppingBagUseCases.getTotal.run();
+    //double totalToPay = await shoppingBagUseCases.getTotal.run();
     AuthResponse authResponse = await authUseCases.getUserSession.run();
     Address address = await addressUseCases.getAddressSession.run();
     List<Product> products = await shoppingBagUseCases.getProducts.run();
 
-    final url = Uri.parse('https://${ApiConfig.NGROK_URL}/payment/create');
+    final url = Uri.parse('https://payment/create');
     try {
       final orderBody = OrderBody(
         idUser: authResponse.user.id!, 
