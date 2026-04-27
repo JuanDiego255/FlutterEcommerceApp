@@ -27,7 +27,7 @@ class ProfileInfoContent extends StatelessWidget {
   Widget _cardProfileInfo(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: MediaQuery.of(context).size.height * 0.35,
+      height: MediaQuery.of(context).size.height * 0.46,
       decoration: BoxDecoration(
         color: Color.fromRGBO(255, 255, 255, 0.7),
         borderRadius: BorderRadius.only(
@@ -67,6 +67,31 @@ class ProfileInfoContent extends StatelessWidget {
                   color: Colors.white,
                 ),
               ),
+            ),
+            Divider(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton.icon(
+                  icon: Icon(Icons.privacy_tip_outlined, size: 16, color: Colors.black54),
+                  label: Text('Privacidad', style: TextStyle(color: Colors.black54, fontSize: 13)),
+                  onPressed: () => Navigator.pushNamed(
+                    context, 'legal',
+                    arguments: {'type': 'privacy', 'title': 'Política de Privacidad'},
+                  ),
+                ),
+                SizedBox(width: 8),
+                Text('·', style: TextStyle(color: Colors.black38)),
+                SizedBox(width: 8),
+                TextButton.icon(
+                  icon: Icon(Icons.description_outlined, size: 16, color: Colors.black54),
+                  label: Text('Términos', style: TextStyle(color: Colors.black54, fontSize: 13)),
+                  onPressed: () => Navigator.pushNamed(
+                    context, 'legal',
+                    arguments: {'type': 'terms', 'title': 'Términos y Condiciones'},
+                  ),
+                ),
+              ],
             )
           ],
         ),

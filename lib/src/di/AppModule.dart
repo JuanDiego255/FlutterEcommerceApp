@@ -1,3 +1,4 @@
+import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/SharedPref.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/AddressService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CategoriesService.dart';
@@ -14,7 +15,6 @@ import 'package:ecommerce_flutter/src/data/repository/OrdersRepositoryImpl.dart'
 import 'package:ecommerce_flutter/src/data/repository/ProductsRepositoryImpl.dart';
 import 'package:ecommerce_flutter/src/data/repository/ShoppingBagRepositoryImpl.dart';
 import 'package:ecommerce_flutter/src/data/repository/UsersRepositoryImpl.dart';
-import 'package:ecommerce_flutter/src/domain/models/AuthResponse.dart';
 import 'package:ecommerce_flutter/src/domain/repository/AddressRepository.dart';
 import 'package:ecommerce_flutter/src/domain/repository/AuthRepository.dart';
 import 'package:ecommerce_flutter/src/domain/repository/CategoriesRepository.dart';
@@ -73,13 +73,7 @@ abstract class AppModule {
 
   @injectable
   Future<String> get token async {
-    String token = "";
-    final userSession = await sharedPref.read('user');
-    if (userSession != null) {
-      AuthResponse authResponse = AuthResponse.fromJson(userSession);
-      token = authResponse.token;
-    }
-    return token;
+    return await SecureStorageService.getAuthToken() ?? '';
   }
 
   @injectable
