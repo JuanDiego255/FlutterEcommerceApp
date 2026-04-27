@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 class DefaultIconBack extends StatelessWidget {
 
-  double left;
-  double top;
-  Color color;
+  final double left;
+  final double top;
+  final Color color;
 
-  DefaultIconBack({
+  const DefaultIconBack({super.key, 
     required this.left,
     required this.top,
     this.color = Colors.white
