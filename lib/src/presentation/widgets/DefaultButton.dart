@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 class DefaultButton extends StatelessWidget {
 
-  String text;
-  Function() onPressed;
-  Color color;
-  Color? colorText;
+  final String text;
+  final Function() onPressed;
+  final Color color;
+  final Color? colorText;
 
-  DefaultButton({
+  const DefaultButton({super.key, 
     required this.text,
     required this.onPressed,
     this.color = Colors.black,
