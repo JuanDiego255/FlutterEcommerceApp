@@ -7,7 +7,8 @@ import 'package:ecommerce_flutter/src/domain/models/MitaiProduct.dart';
 import 'package:ecommerce_flutter/src/domain/models/ProductVariant.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
+
 
 class MitaiApiService {
   // Host is read at call time from TenantSession — supports runtime tenant switching.
@@ -15,11 +16,7 @@ class MitaiApiService {
 
   Future<String?> _getToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userJson = prefs.getString('user');
-      if (userJson == null) return null;
-      final decoded = json.decode(userJson);
-      return decoded['token'] as String?;
+      return await SecureStorageService.getAuthToken() ?? '';
     } catch (_) {
       return null;
     }
@@ -27,14 +24,6 @@ class MitaiApiService {
 
   Map<String, String> _headers(String? token) {
     final h = <String, String>{'Content-Type': 'application/json', 'Accept': 'application/json'};
-    if (token != null && token.isNotEmpty) h['Authorization'] = 'Bearer $token';
-    final appToken = TenantSession.appToken;
-    if (appToken != null && appToken.isNotEmpty) h['X-App-Token'] = appToken;
-    return h;
-  }
-
-  Map<String, String> _authHeaders(String? token) {
-    final h = <String, String>{'Accept': 'application/json'};
     if (token != null && token.isNotEmpty) h['Authorization'] = 'Bearer $token';
     final appToken = TenantSession.appToken;
     if (appToken != null && appToken.isNotEmpty) h['X-App-Token'] = appToken;
