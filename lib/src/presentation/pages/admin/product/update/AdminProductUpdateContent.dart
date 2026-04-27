@@ -11,9 +11,9 @@ import 'package:flutter/material.dart';
 
 class AdminProductUpdateContent extends StatelessWidget {
 
-  AdminProductUpdateBloc? bloc;
-  AdminProductUpdateState state;
-  Product? product;
+  final AdminProductUpdateBloc? bloc;
+  final AdminProductUpdateState state;
+  final Product? product;
 
   AdminProductUpdateContent(this.bloc, this.state, this.product);
 

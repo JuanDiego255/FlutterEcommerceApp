@@ -10,7 +10,7 @@ class AdminCategoryCreateState extends Equatable {
   final BlocFormItem name;
   final BlocFormItem description;
   final GlobalKey<FormState>? formKey;
-  File? file;
+  final File? file;
   final Resource? response;
 
   AdminCategoryCreateState({

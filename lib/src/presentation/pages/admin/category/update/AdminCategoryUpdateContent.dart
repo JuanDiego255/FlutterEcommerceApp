@@ -10,11 +10,11 @@ import 'package:flutter/material.dart';
 
 class AdminCategoryUpdateContent extends StatelessWidget {
 
-  AdminCategoryUpdateBloc? bloc;
-  AdminCategoryUpdateState state;
-  Category? category;
+  final AdminCategoryUpdateBloc? bloc;
+  final AdminCategoryUpdateState state;
+  final Category? category;
 
-  AdminCategoryUpdateContent(this.bloc, this.state, this.category);
+  const AdminCategoryUpdateContent(this.bloc, this.state, this.category, {super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -9,10 +9,10 @@ import 'package:ecommerce_flutter/src/presentation/pages/admin/product/create/bl
 
 class AdminProductCreateContent extends StatelessWidget {
 
-  AdminProductCreateBloc? bloc;
-  AdminProductCreateState state;
+  final AdminProductCreateBloc? bloc;
+  final AdminProductCreateState state;
 
-  AdminProductCreateContent(this.bloc, this.state);
+  const AdminProductCreateContent(this.bloc, this.state, {super.key});
 
   @override
   Widget build(BuildContext context) {

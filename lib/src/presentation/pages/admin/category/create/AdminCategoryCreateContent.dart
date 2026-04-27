@@ -9,10 +9,10 @@ import 'package:flutter/material.dart';
 
 class AdminCategoryCreateContent extends StatelessWidget {
 
-  AdminCategoryCreateBloc? bloc;
-  AdminCategoryCreateState state;
+  final AdminCategoryCreateBloc? bloc;
+  final AdminCategoryCreateState state;
 
-  AdminCategoryCreateContent(this.bloc, this.state);
+  const AdminCategoryCreateContent(this.bloc, this.state, {super.key});
 
   @override
   Widget build(BuildContext context) {

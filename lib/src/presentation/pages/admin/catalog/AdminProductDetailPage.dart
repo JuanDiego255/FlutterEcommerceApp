@@ -341,7 +341,7 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
   }
 
   Widget _infoRow(String label, String value,
-      {bool isFirst = false, bool isLast = false}) {
+      {bool isFirst = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(

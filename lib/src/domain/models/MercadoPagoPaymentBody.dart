@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:ecommerce_flutter/src/domain/models/MercadoPagoCardTokenBody.dart';
-import 'package:ecommerce_flutter/src/domain/models/Order.dart';
 import 'package:ecommerce_flutter/src/domain/models/Product.dart';
 
 MercadoPagoPaymentBody mercadoPagoPaymentBodyFromJson(String str) => MercadoPagoPaymentBody.fromJson(json.decode(str));

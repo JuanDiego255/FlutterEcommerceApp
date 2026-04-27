@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogHomeData.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogNavItem.dart';
-import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProduct.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:http/http.dart' as http;
 

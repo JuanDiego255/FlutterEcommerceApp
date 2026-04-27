@@ -237,7 +237,7 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
       _snack(_isEdit ? 'Producto actualizado' : 'Producto creado', isError: false);
       Navigator.pop(context, true);
     } else if (result is Error) {
-      _snack((result as Error).message);
+      _snack(result.message);
     }
   }
 

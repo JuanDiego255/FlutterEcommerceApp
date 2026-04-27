@@ -4,8 +4,6 @@ import 'package:ecommerce_flutter/src/presentation/pages/client/address/create/b
 import 'package:ecommerce_flutter/src/presentation/pages/client/address/create/bloc/ClientAddressCreateState.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/address/list/bloc/ClientAddressListBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/address/list/bloc/ClientAddressListEvent.dart';
-import 'package:ecommerce_flutter/src/presentation/widgets/DefaultIconBack.dart';
-import 'package:ecommerce_flutter/src/presentation/widgets/DefaultTextField.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';

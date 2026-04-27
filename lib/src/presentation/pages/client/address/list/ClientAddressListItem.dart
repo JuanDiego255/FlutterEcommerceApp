@@ -7,12 +7,12 @@ import 'package:flutter/widgets.dart';
 
 class ClientAddressListItem extends StatelessWidget {
 
-  ClientAddressListBloc? bloc;
-  ClientAddressListState state;
-  Address address;
-  int index;
+  final ClientAddressListBloc? bloc;
+  final ClientAddressListState state;
+  final Address address;
+  final int index;
 
-  ClientAddressListItem(this.bloc, this.state, this.address, this.index);
+  const ClientAddressListItem(this.bloc, this.state, this.address, this.index, {super.key});
 
   @override
   Widget build(BuildContext context) {

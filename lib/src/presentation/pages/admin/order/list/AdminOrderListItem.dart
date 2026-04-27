@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 class AdminOrderListItem extends StatelessWidget {
 
-  Order order; 
+  final Order order; 
   AdminOrderListItem(this.order);
 
   @override

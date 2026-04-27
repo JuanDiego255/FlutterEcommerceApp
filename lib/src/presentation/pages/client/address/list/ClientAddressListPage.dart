@@ -1,6 +1,3 @@
-import 'dart:convert';
-
-import 'package:ecommerce_flutter/src/data/api/ApiConfig.dart';
 import 'package:ecommerce_flutter/src/domain/models/Address.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/address/list/ClientAddressListItem.dart';
@@ -10,8 +7,6 @@ import 'package:ecommerce_flutter/src/presentation/pages/client/address/list/blo
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 
 
 class ClientAddressListPage extends StatefulWidget {

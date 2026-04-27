@@ -8,10 +8,10 @@ import 'package:flutter/material.dart';
 
 class ClientAddressCreateContent extends StatelessWidget {
 
-  ClientAddressCreateBloc? bloc;
-  ClientAddressCreateState state;
+  final ClientAddressCreateBloc? bloc;
+  final ClientAddressCreateState state;
 
-  ClientAddressCreateContent(this.bloc, this.state);
+  const ClientAddressCreateContent(this.bloc, this.state, {super.key});
 
   @override
   Widget build(BuildContext context) {

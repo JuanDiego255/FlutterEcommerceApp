@@ -5,9 +5,9 @@ import 'package:ecommerce_flutter/src/presentation/widgets/DefaultButton.dart';
 import 'package:flutter/material.dart';
 
 class AdminOrderDetailBottom extends StatelessWidget {
-  Order? order;
-  AdminOrderDetailBloc? bloc;
-  AdminOrderDetailBottom(this.bloc, this.order);
+  final Order? order;
+  final AdminOrderDetailBloc? bloc;
+  const AdminOrderDetailBottom(this.bloc, this.order, {super.key});
 
   @override
   Widget build(BuildContext context) {

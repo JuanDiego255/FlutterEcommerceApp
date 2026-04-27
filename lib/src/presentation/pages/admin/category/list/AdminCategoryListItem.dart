@@ -6,8 +6,8 @@ import 'package:flutter/widgets.dart';
 
 class AdminCategoryListItem extends StatelessWidget {
 
-  AdminCategoryListBloc? bloc;
-  Category? category;
+  final AdminCategoryListBloc? bloc;
+  final Category? category;
 
   AdminCategoryListItem(this.bloc, this.category);
 

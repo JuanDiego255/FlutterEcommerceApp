@@ -850,7 +850,7 @@ class _FeaturedCardState extends State<_FeaturedCard> {
 
 // ─── Small attr chip ──────────────────────────────────────────────────────────
 
-class _AttrChip extends StatelessWidget {
+/* class _AttrChip extends StatelessWidget {
   final String label;
   const _AttrChip({required this.label});
   @override
@@ -862,7 +862,7 @@ class _AttrChip extends StatelessWidget {
         child: Text(label,
             style: const TextStyle(fontSize: 10, color: _kAccent, fontWeight: FontWeight.w500)),
       );
-}
+} */
 
 // ─── Contact chip (footer) ────────────────────────────────────────────────────
 

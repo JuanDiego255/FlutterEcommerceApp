@@ -1,4 +1,3 @@
-import 'package:ecommerce_flutter/src/domain/models/Category.dart';
 import 'package:ecommerce_flutter/src/domain/models/Product.dart';
 import 'package:ecommerce_flutter/src/presentation/utils/BlocFormItem.dart';
 import 'package:equatable/equatable.dart';

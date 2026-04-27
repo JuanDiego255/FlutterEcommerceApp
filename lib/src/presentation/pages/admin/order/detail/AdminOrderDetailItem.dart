@@ -1,18 +1,17 @@
 import 'package:ecommerce_flutter/src/domain/models/Order.dart';
-import 'package:ecommerce_flutter/src/domain/models/Product.dart';
 import 'package:flutter/material.dart';
 
 class AdminOrderDetailItem extends StatelessWidget {
 
-  OrderHasProduct? orderHasProduct;
+  final OrderHasProduct? orderHasProduct;
 
-  AdminOrderDetailItem(this.orderHasProduct);
+  const AdminOrderDetailItem(this.orderHasProduct, {super.key});
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
       leading: orderHasProduct != null 
-        ? Container(
+        ? SizedBox(
           width: 70,
           child: FadeInImage.assetNetwork(
             placeholder: 'assets/img/no-image.png', 

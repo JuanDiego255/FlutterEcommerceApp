@@ -378,7 +378,7 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
     final result = await widget.service.getProductVariants(widget.productId);
     if (!mounted) return;
     if (result is Success<List<dynamic>>) {
-      final inStock = (result as Success<List<dynamic>>).data!
+      final inStock = result.data
           .whereType<Map<String, dynamic>>()
           .where((v) {
             final manageStock = (v['manage_stock'] as num?)?.toInt() ?? 1;

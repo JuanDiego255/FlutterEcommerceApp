@@ -10,10 +10,10 @@ import 'package:fluttertoast/fluttertoast.dart';
 
 class RegisterContent extends StatelessWidget {
 
-  RegisterBloc? bloc;
-  RegisterState state;
+  final RegisterBloc? bloc;
+  final RegisterState state;
 
-  RegisterContent(this.bloc, this.state);
+  const RegisterContent(this.bloc, this.state, {super.key});
 
   @override
   Widget build(BuildContext context) {
