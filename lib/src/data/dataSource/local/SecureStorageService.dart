@@ -3,10 +3,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Encrypted storage for sensitive credentials.
 ///
 /// - Auth token (Sanctum/JWT from login) expires after [_kMaxAuthAgeDays] days.
-/// - App token (X-App-Token for admin API access) has no forced expiry — it is
-///   managed by the backend and cleared on explicit logout/tenant change.
-/// - All data is stored in the platform Keychain (iOS) or EncryptedSharedPreferences
-///   (Android API 23+), never in plain SharedPreferences.
+/// - App token (X-App-Token for admin API access) has no forced expiry.
+/// - All data stored in iOS Keychain / Android EncryptedSharedPreferences.
 class SecureStorageService {
   SecureStorageService._();
 
@@ -23,9 +21,29 @@ class SecureStorageService {
 
   static const int _kMaxAuthAgeDays = 30;
 
+  // ─── In-memory cache ──────────────────────────────────────────────────────
+  // Primed at app start via initializeCache(); updated immediately on every
+  // login/logout so all services always get the current token synchronously.
+
+  static String? _cachedAuthToken;
+
+  /// Synchronous getter — current token, zero async latency.
+  static String get authToken => _cachedAuthToken ?? '';
+
+  /// Call once at startup (after TenantSession.initialize) to load the
+  /// persisted token into the in-memory cache.
+  static Future<void> initializeCache() async {
+    if (await _isAuthTokenExpired()) {
+      await clearAuthToken();
+      return;
+    }
+    _cachedAuthToken = await _storage.read(key: _kAuthToken);
+  }
+
   // ─── Auth token ───────────────────────────────────────────────────────────
 
   static Future<void> saveAuthToken(String token) async {
+    _cachedAuthToken = token; // immediate in-memory update — no async delay
     await _storage.write(key: _kAuthToken, value: token);
     await _storage.write(
       key: _kAuthIssuedAt,
@@ -35,11 +53,13 @@ class SecureStorageService {
 
   /// Returns the stored auth token, or null if expired / not set.
   static Future<String?> getAuthToken() async {
+    if (_cachedAuthToken != null) return _cachedAuthToken;
     if (await _isAuthTokenExpired()) {
       await clearAuthToken();
       return null;
     }
-    return _storage.read(key: _kAuthToken);
+    _cachedAuthToken = await _storage.read(key: _kAuthToken);
+    return _cachedAuthToken;
   }
 
   static Future<bool> _isAuthTokenExpired() async {
@@ -51,6 +71,7 @@ class SecureStorageService {
   }
 
   static Future<void> clearAuthToken() async {
+    _cachedAuthToken = null;
     await _storage.delete(key: _kAuthToken);
     await _storage.delete(key: _kAuthIssuedAt);
   }

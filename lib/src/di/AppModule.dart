@@ -1,4 +1,3 @@
-import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/SharedPref.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/AddressService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CategoriesService.dart';
@@ -72,30 +71,25 @@ abstract class AppModule {
   SharedPref get sharedPref => SharedPref();
 
   @injectable
-  Future<String> get token async {
-    return await SecureStorageService.getAuthToken() ?? '';
-  }
-
-  @injectable
   AuthService get authService => AuthService();
 
   @injectable
-  UsersService get usersService => UsersService(token);
+  UsersService get usersService => UsersService();
 
   @injectable
-  CategoriesService get categoriesService => CategoriesService(token);
+  CategoriesService get categoriesService => CategoriesService();
 
   @injectable
-  ProductsService get productsService => ProductsService(token);
+  ProductsService get productsService => ProductsService();
 
   @injectable
-  MercadoPagoService get mercadoPagoService => MercadoPagoService(token);
+  MercadoPagoService get mercadoPagoService => MercadoPagoService();
 
   @injectable
-  AddressService get addressService => AddressService(token);
+  AddressService get addressService => AddressService();
 
   @injectable
-  OrdersService get ordersService => OrdersService(token);
+  OrdersService get ordersService => OrdersService();
 
   @injectable
   AuthRepository get authRepository => AuthRepositoryImpl(authService, sharedPref);

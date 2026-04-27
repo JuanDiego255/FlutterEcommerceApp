@@ -1,5 +1,6 @@
 import 'package:app_links/app_links.dart';
 import 'package:ecommerce_flutter/injection.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/blocProviders.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/admin/category/create/AdminCategoryCreatePage.dart';
@@ -38,7 +39,8 @@ import 'package:fluttertoast/fluttertoast.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await configureDependencies();
-  await TenantSession.initialize(); // Load saved tenant config before any API call
+  await TenantSession.initialize();
+  await SecureStorageService.initializeCache();
   runApp(const MyApp());
 }
 

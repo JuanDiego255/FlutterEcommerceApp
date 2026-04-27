@@ -1,75 +1,55 @@
 import 'dart:convert';
-import 'package:ecommerce_flutter/src/domain/utils/ListToString.dart';
-import 'package:http/http.dart' as http;
 import 'package:ecommerce_flutter/src/data/api/ApiConfig.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
 import 'package:ecommerce_flutter/src/domain/models/Address.dart';
+import 'package:ecommerce_flutter/src/domain/utils/ListToString.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
+import 'package:http/http.dart' as http;
 
 class AddressService {
 
-  Future<String> token;
-  
-  AddressService(this.token);
-
+  Map<String, String> get _headers => {
+    'Content-Type': 'application/json',
+    'Authorization': SecureStorageService.authToken,
+  };
 
   Future<Resource<Address>> create(Address address) async {
     try {
-      Uri url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/address');      
-      Map<String, String> headers = { 
-        "Content-Type": "application/json",
-        "Authorization": await token
-      };
-      String body = json.encode(address.toJson());
-      final response = await http.post(url, headers: headers, body: body);
+      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/address');
+      final response = await http.post(url, headers: _headers, body: json.encode(address.toJson()));
       final data = json.decode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        Address addressResponse = Address.fromJson(data);
-        return Success(addressResponse);
+        return Success(Address.fromJson(data));
       }
-      else { // ERROR
-        return Error(listToString(data['message']));
-      }      
+      return Error(listToString(data['message']));
     } catch (e) {
       return Error(e.toString());
     }
   }
 
   Future<Resource<List<Address>>> getUserAddress(int idUser) async {
-     try {
-      Uri url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/address/user/$idUser'); 
-      Map<String, String> headers = { 
-        "Content-Type": "application/json",
-        "Authorization": await token
-      };
-      final response = await http.get(url, headers: headers);
+    try {
+      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/address/user/$idUser');
+      final response = await http.get(url, headers: _headers);
       final data = json.decode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        List<Address> address = Address.fromJsonList(data);
-        return Success(address);
+        return Success(Address.fromJsonList(data));
       }
-      else { // ERROR
-        return Error(listToString(data['message']));
-      }      
+      return Error(listToString(data['message']));
     } catch (e) {
       return Error(e.toString());
     }
   }
 
   Future<Resource<bool>> delete(int id) async {
-     try {
-      Uri url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/address/$id');     
-      Map<String, String> headers = { 
-        "Content-Type": "application/json",
-        "Authorization": await token
-      };
-      final response = await http.delete(url, headers: headers);
+    try {
+      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/address/$id');
+      final response = await http.delete(url, headers: _headers);
       final data = json.decode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
         return Success(true);
       }
-      else { // ERROR
-        return Error(listToString(data['message']));
-      }      
+      return Error(listToString(data['message']));
     } catch (e) {
       return Error(e.toString());
     }

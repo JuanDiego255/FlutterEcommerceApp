@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:ecommerce_flutter/src/data/api/ApiConfig.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
 import 'package:ecommerce_flutter/src/domain/models/Product.dart';
 import 'package:ecommerce_flutter/src/domain/utils/ListToString.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
@@ -10,25 +11,25 @@ import 'package:path/path.dart';
 
 class ProductsService {
 
-  Future<String> token;
-
-  ProductsService(this.token);
+  Map<String, String> get _headers => {
+    'Content-Type': 'application/json',
+    'Authorization': SecureStorageService.authToken,
+  };
 
   Future<Resource<Product>> create(Product product, List<File> files) async {
     try {
-      Uri url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/products'); 
-      
+      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/products');
       final request = http.MultipartRequest('POST', url);
-      request.headers['Authorization'] = await token;
-      files.forEach((file) async {
+      request.headers['Authorization'] = SecureStorageService.authToken;
+      for (final file in files) {
         request.files.add(http.MultipartFile(
           'files',
           http.ByteStream(file.openRead().cast()),
           await file.length(),
           filename: basename(file.path),
-          contentType: MediaType('image', 'jpg')
+          contentType: MediaType('image', 'jpg'),
         ));
-      });
+      }
       request.fields['name'] = product.name;
       request.fields['description'] = product.description;
       request.fields['price'] = product.price.toString();
@@ -36,33 +37,23 @@ class ProductsService {
       final response = await request.send();
       final data = json.decode(await response.stream.transform(utf8.decoder).first);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        Product productResponse = Product.fromJson(data);
-        return Success(productResponse);
+        return Success(Product.fromJson(data));
       }
-      else { // ERROR
-        return Error(listToString(data['message']));
-      }      
+      return Error(listToString(data['message']));
     } catch (e) {
       return Error(e.toString());
     }
   }
 
-   Future<Resource<List<Product>>> getProductsByCategory(int idCategory) async {
-     try {
-      Uri url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/products/category/$idCategory'); 
-      Map<String, String> headers = { 
-        "Content-Type": "application/json",
-        "Authorization": await token
-      };
-      final response = await http.get(url, headers: headers);
+  Future<Resource<List<Product>>> getProductsByCategory(int idCategory) async {
+    try {
+      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/products/category/$idCategory');
+      final response = await http.get(url, headers: _headers);
       final data = json.decode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        List<Product> products = Product.fromJsonList(data);
-        return Success(products);
+        return Success(Product.fromJsonList(data));
       }
-      else { // ERROR
-        return Error(listToString(data['message']));
-      }      
+      return Error(listToString(data['message']));
     } catch (e) {
       return Error(e.toString());
     }
@@ -70,61 +61,45 @@ class ProductsService {
 
   Future<Resource<Product>> update(int id, Product product, List<File>? files) async {
     try {
-      // http://192.168.80.13:3000/users/5
-      Uri url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/products/${id}'); 
-      
+      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/products/$id');
       final request = http.MultipartRequest('PUT', url);
-      request.headers['Authorization'] = await token;
-      if (files != null) {
-        if (files.isNotEmpty) {
-          files.forEach((file) async {
-            request.files.add(http.MultipartFile(
-              'files[]',
-              http.ByteStream(file.openRead().cast()),
-              await file.length(),
-              filename: basename(file.path),
-              contentType: MediaType('image', 'jpg')
-            ));
-          });
+      request.headers['Authorization'] = SecureStorageService.authToken;
+      if (files != null && files.isNotEmpty) {
+        for (final file in files) {
+          request.files.add(http.MultipartFile(
+            'files[]',
+            http.ByteStream(file.openRead().cast()),
+            await file.length(),
+            filename: basename(file.path),
+            contentType: MediaType('image', 'jpg'),
+          ));
         }
       }
-      
       request.fields['name'] = product.name;
       request.fields['description'] = product.description;
       request.fields['price'] = product.price.toString();
-      
       final response = await request.send();
       final data = json.decode(await response.stream.transform(utf8.decoder).first);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        Product productResponse = Product.fromJson(data);
-        return Success(productResponse);
+        return Success(Product.fromJson(data));
       }
-      else { // ERROR
-        return Error(listToString(data['message']));
-      }      
-    } catch (e) {
-      return Error(e.toString());
-    }
-  }
-   
-  Future<Resource<bool>> delete(int id) async {
-     try {
-      Uri url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/products/$id');      
-      Map<String, String> headers = { 
-        "Content-Type": "application/json",
-        "Authorization": await token
-      };
-      final response = await http.delete(url, headers: headers);
-      final data = json.decode(response.body);
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return Success(true);
-      }
-      else { // ERROR
-        return Error(listToString(data['message']));
-      }      
+      return Error(listToString(data['message']));
     } catch (e) {
       return Error(e.toString());
     }
   }
 
+  Future<Resource<bool>> delete(int id) async {
+    try {
+      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/products/$id');
+      final response = await http.delete(url, headers: _headers);
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return Success(true);
+      }
+      return Error(listToString(data['message']));
+    } catch (e) {
+      return Error(e.toString());
+    }
+  }
 }
