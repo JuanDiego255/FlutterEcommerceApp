@@ -2,6 +2,7 @@ import 'package:app_links/app_links.dart';
 import 'package:ecommerce_flutter/injection.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistNotifier.dart';
 import 'package:ecommerce_flutter/src/blocProviders.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/admin/category/create/AdminCategoryCreatePage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/admin/category/update/AdminCategoryUpdatePage.dart';
@@ -41,6 +42,7 @@ void main() async {
   await configureDependencies();
   await TenantSession.initialize();
   await SecureStorageService.initializeCache();
+  await WishlistNotifier.instance.reload();
   runApp(const MyApp());
 }
 

@@ -181,8 +181,7 @@ class MitaiApiService {
   }) async {
     try {
       final request = http.MultipartRequest('POST', Uri.https(_baseHost, '/api/admin/products'));
-      final t = _token; if (t != null) request.headers['Authorization'] = 'Bearer $t';
-      request.headers['Accept'] = 'application/json';
+      _authHeaders.forEach((k, v) => request.headers[k] = v);
 
       request.fields['name']         = name;
       request.fields['code']         = code;
@@ -227,8 +226,7 @@ class MitaiApiService {
   }) async {
     try {
       final request = http.MultipartRequest('POST', Uri.https(_baseHost, '/api/admin/products/$id'));
-      final t = _token; if (t != null) request.headers['Authorization'] = 'Bearer $t';
-      request.headers['Accept'] = 'application/json';
+      _authHeaders.forEach((k, v) => request.headers[k] = v);
 
       request.fields['name']         = name;
       request.fields['code']         = code;

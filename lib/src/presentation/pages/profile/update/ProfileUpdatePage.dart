@@ -34,7 +34,7 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
   @override
   Widget build(BuildContext context) { // DESPUES DEL INIT // VARIAS VECES
     _bloc = BlocProvider.of<ProfileUpdateBloc>(context);
-    user = ModalRoute.of(context)?.settings.arguments as User;
+    user = ModalRoute.of(context)?.settings.arguments as User?;
     return Scaffold(
       body: BlocListener<ProfileUpdateBloc, ProfileUpdateState>(
         listener: (context, state) {

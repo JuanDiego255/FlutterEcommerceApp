@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProduct.dart';
@@ -49,14 +50,13 @@ class _DetailViewState extends State<_DetailView> {
 
   int _imageIndex = 0;
   CatalogVariant? _selectedVariant;
-  bool _inWishlist = false;
   bool _descExpanded = false;
+  final _wishlist = WishlistNotifier.instance;
 
   @override
   void initState() {
     super.initState();
     _loadDetail();
-    _checkWishlist();
   }
 
   @override
@@ -91,18 +91,11 @@ class _DetailViewState extends State<_DetailView> {
     });
   }
 
-  Future<void> _checkWishlist() async {
-    final has = await WishlistService.contains(widget.product.id);
-    if (mounted) setState(() => _inWishlist = has);
-  }
-
   Future<void> _toggleWishlist() async {
-    if (_inWishlist) {
-      await WishlistService.remove(widget.product.id);
-      if (mounted) setState(() => _inWishlist = false);
+    if (_wishlist.contains(widget.product.id)) {
+      await _wishlist.remove(widget.product.id);
       return;
     }
-    // If detail is loaded, pick from full variants; otherwise fall back to availableAttrs
     String? variantLabel;
     double? variantPrice;
 
@@ -131,12 +124,11 @@ class _DetailViewState extends State<_DetailView> {
       }
     }
 
-    await WishlistService.add(WishlistItem(
+    await _wishlist.add(WishlistItem(
       product: widget.product,
       variantLabel: variantLabel,
       variantPrice: variantPrice,
     ));
-    if (mounted) setState(() => _inWishlist = true);
   }
 
   Future<String?> _showVariantSheet(List<String> labels) {
@@ -161,6 +153,13 @@ class _DetailViewState extends State<_DetailView> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _wishlist,
+      builder: (context, _) => _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: _kBg,
       body: CustomScrollView(
@@ -217,14 +216,14 @@ class _DetailViewState extends State<_DetailView> {
             icon: AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
               child: Icon(
-                _inWishlist ? Icons.favorite : Icons.favorite_border,
-                key: ValueKey(_inWishlist),
-                color: _inWishlist ? _kRed : _kSub,
+                _wishlist.contains(widget.product.id) ? Icons.favorite : Icons.favorite_border,
+                key: ValueKey(_wishlist.contains(widget.product.id)),
+                color: _wishlist.contains(widget.product.id) ? _kRed : _kSub,
                 size: 22,
               ),
             ),
             onPressed: _toggleWishlist,
-            tooltip: _inWishlist ? 'Quitar de favoritos' : 'Agregar a favoritos',
+            tooltip: _wishlist.contains(widget.product.id) ? 'Quitar de favoritos' : 'Agregar a favoritos',
           ),
           IconButton(
             icon: const Icon(Icons.share_outlined, color: _kPrimary, size: 20),

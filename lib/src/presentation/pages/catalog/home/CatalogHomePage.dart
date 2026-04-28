@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogHomeData.dart';
@@ -659,33 +660,24 @@ class _FeaturedCard extends StatefulWidget {
 }
 
 class _FeaturedCardState extends State<_FeaturedCard> {
-  bool _inWishlist = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WishlistService.contains(widget.product.id)
-        .then((v) { if (mounted) setState(() => _inWishlist = v); });
-  }
+  final _wishlist = WishlistNotifier.instance;
 
   Future<void> _toggleWishlist() async {
     final p = widget.product;
-    if (_inWishlist) {
-      await WishlistService.remove(p.id);
-      if (mounted) setState(() => _inWishlist = false);
+    if (_wishlist.contains(p.id)) {
+      await _wishlist.remove(p.id);
       return;
     }
     final attrs = p.availableAttrs;
     if (attrs.isEmpty) {
-      await WishlistService.add(WishlistItem(product: p));
+      await _wishlist.add(WishlistItem(product: p));
     } else if (attrs.length == 1) {
-      await WishlistService.add(WishlistItem(product: p, variantLabel: attrs.first));
+      await _wishlist.add(WishlistItem(product: p, variantLabel: attrs.first));
     } else {
       final picked = await _showVariantPicker(context, attrs);
       if (picked == null) return;
-      await WishlistService.add(WishlistItem(product: p, variantLabel: picked));
+      await _wishlist.add(WishlistItem(product: p, variantLabel: picked));
     }
-    if (mounted) setState(() => _inWishlist = true);
   }
 
   @override
@@ -693,6 +685,16 @@ class _FeaturedCardState extends State<_FeaturedCard> {
     final p = widget.product;
     final attrs = p.availableAttrs;
 
+    return ListenableBuilder(
+      listenable: _wishlist,
+      builder: (context, _) {
+        final inWishlist = _wishlist.contains(p.id);
+        return _buildCard(context, p, attrs, inWishlist);
+      },
+    );
+  }
+
+  Widget _buildCard(BuildContext context, dynamic p, List<String> attrs, bool inWishlist) {
     return GestureDetector(
       onTap: widget.onTap,
       child: Container(
@@ -754,10 +756,10 @@ class _FeaturedCardState extends State<_FeaturedCard> {
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 220),
                           child: Icon(
-                            _inWishlist ? Icons.favorite : Icons.favorite_border,
-                            key: ValueKey(_inWishlist),
+                            inWishlist ? Icons.favorite : Icons.favorite_border,
+                            key: ValueKey(inWishlist),
                             size: 16,
-                            color: _inWishlist ? const Color(0xFFE53935) : _kSub,
+                            color: inWishlist ? const Color(0xFFE53935) : _kSub,
                           ),
                         ),
                       ),
@@ -808,10 +810,9 @@ class _FeaturedCardState extends State<_FeaturedCard> {
                     GestureDetector(
                       onTap: () async {
                         final picked = await _showSelectableAttrsSheet(context, p.attrGroups);
-                        if (!mounted || picked == null) return;
-                        if (_inWishlist) await WishlistService.remove(p.id);
-                        await WishlistService.add(WishlistItem(product: p, variantLabel: picked));
-                        if (mounted) setState(() => _inWishlist = true);
+                        if (picked == null) return;
+                        if (_wishlist.contains(p.id)) await _wishlist.remove(p.id);
+                        await _wishlist.add(WishlistItem(product: p, variantLabel: picked));
                       },
                       behavior: HitTestBehavior.opaque,
                       child: Container(

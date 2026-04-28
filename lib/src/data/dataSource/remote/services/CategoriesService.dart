@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:ecommerce_flutter/src/data/api/ApiConfig.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/domain/models/Category.dart';
 import 'package:ecommerce_flutter/src/domain/utils/ListToString.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
@@ -11,16 +12,27 @@ import 'package:path/path.dart';
 
 class CategoriesService {
 
-  Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    'Authorization': SecureStorageService.authToken,
-  };
+  Map<String, String> get _headers {
+    final h = <String, String>{
+      'Content-Type': 'application/json',
+      'Authorization': SecureStorageService.authToken,
+    };
+    final appToken = TenantSession.appToken;
+    if (appToken != null && appToken.isNotEmpty) h['X-App-Token'] = appToken;
+    return h;
+  }
+
+  void _applyHeaders(http.MultipartRequest request) {
+    request.headers['Authorization'] = SecureStorageService.authToken;
+    final appToken = TenantSession.appToken;
+    if (appToken != null && appToken.isNotEmpty) request.headers['X-App-Token'] = appToken;
+  }
 
   Future<Resource<Category>> create(Category category, File file) async {
     try {
       final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/categories');
       final request = http.MultipartRequest('POST', url);
-      request.headers['Authorization'] = SecureStorageService.authToken;
+      _applyHeaders(request);
       request.files.add(http.MultipartFile(
         'file',
         http.ByteStream(file.openRead().cast()),
@@ -74,7 +86,7 @@ class CategoriesService {
     try {
       final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/categories/$id');
       final request = http.MultipartRequest('PUT', url);
-      request.headers['Authorization'] = SecureStorageService.authToken;
+      _applyHeaders(request);
       request.files.add(http.MultipartFile(
         'file',
         http.ByteStream(file.openRead().cast()),

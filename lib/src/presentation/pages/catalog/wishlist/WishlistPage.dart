@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/WishlistItem.dart';
@@ -40,7 +41,7 @@ class _WishlistPageState extends State<WishlistPage> {
   }
 
   Future<void> _remove(int id) async {
-    await WishlistService.remove(id);
+    await WishlistNotifier.instance.remove(id);
     setState(() => _items.removeWhere((i) => i.product.id == id));
   }
 
@@ -64,7 +65,7 @@ class _WishlistPageState extends State<WishlistPage> {
       ),
     );
     if (confirmed == true) {
-      await WishlistService.clear();
+      await WishlistNotifier.instance.clear();
       if (mounted) setState(() => _items.clear());
     }
   }
