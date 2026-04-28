@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogNavItem.dart';
@@ -527,20 +528,12 @@ class _ProductCard extends StatefulWidget {
 }
 
 class _ProductCardState extends State<_ProductCard> {
-  bool _inWishlist = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WishlistService.contains(widget.product.id)
-        .then((v) { if (mounted) setState(() => _inWishlist = v); });
-  }
+  final _wishlist = WishlistNotifier.instance;
 
   Future<void> _toggleWishlist() async {
     final p = widget.product;
-    if (_inWishlist) {
-      await WishlistService.remove(p.id);
-      if (mounted) setState(() => _inWishlist = false);
+    if (_wishlist.contains(p.id)) {
+      await _wishlist.remove(p.id);
       return;
     }
     final attrs = p.availableAttrs;
@@ -556,13 +549,22 @@ class _ProductCardState extends State<_ProductCard> {
     } else if (attrs.length == 1) {
       picked = attrs.first;
     }
-    await WishlistService.add(WishlistItem(product: p, variantLabel: picked));
-    if (mounted) setState(() => _inWishlist = true);
+    await _wishlist.add(WishlistItem(product: p, variantLabel: picked));
   }
 
   @override
   Widget build(BuildContext context) {
     final p = widget.product;
+    return ListenableBuilder(
+      listenable: _wishlist,
+      builder: (context, _) {
+        final inWishlist = _wishlist.contains(p.id);
+        return _buildCard(context, p, inWishlist);
+      },
+    );
+  }
+
+  Widget _buildCard(BuildContext context, dynamic p, bool inWishlist) {
     return GestureDetector(
       onTap: widget.onTap,
       child: Container(
@@ -619,10 +621,10 @@ class _ProductCardState extends State<_ProductCard> {
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 220),
                           child: Icon(
-                            _inWishlist ? Icons.favorite : Icons.favorite_border,
-                            key: ValueKey(_inWishlist),
+                            inWishlist ? Icons.favorite : Icons.favorite_border,
+                            key: ValueKey(inWishlist),
                             size: 16,
-                            color: _inWishlist ? const Color(0xFFE53935) : _kSub,
+                            color: inWishlist ? const Color(0xFFE53935) : _kSub,
                           ),
                         ),
                       ),
@@ -675,10 +677,9 @@ class _ProductCardState extends State<_ProductCard> {
                               borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
                           builder: (_) => _SelectableAttrsSheet(attrGroups: p.attrGroups),
                         );
-                        if (!mounted || picked == null) return;
-                        if (_inWishlist) await WishlistService.remove(p.id);
-                        await WishlistService.add(WishlistItem(product: p, variantLabel: picked));
-                        if (mounted) setState(() => _inWishlist = true);
+                        if (picked == null) return;
+                        if (_wishlist.contains(p.id)) await _wishlist.remove(p.id);
+                        await _wishlist.add(WishlistItem(product: p, variantLabel: picked));
                       },
                       behavior: HitTestBehavior.opaque,
                       child: Container(

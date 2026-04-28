@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:ecommerce_flutter/src/data/api/ApiConfig.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/domain/models/Address.dart';
 import 'package:ecommerce_flutter/src/domain/utils/ListToString.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
@@ -8,10 +9,15 @@ import 'package:http/http.dart' as http;
 
 class AddressService {
 
-  Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    'Authorization': SecureStorageService.authToken,
-  };
+  Map<String, String> get _headers {
+    final h = <String, String>{
+      'Content-Type': 'application/json',
+      'Authorization': SecureStorageService.authToken,
+    };
+    final appToken = TenantSession.appToken;
+    if (appToken != null && appToken.isNotEmpty) h['X-App-Token'] = appToken;
+    return h;
+  }
 
   Future<Resource<Address>> create(Address address) async {
     try {

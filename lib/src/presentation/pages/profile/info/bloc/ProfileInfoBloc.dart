@@ -13,12 +13,9 @@ class ProfileInfoBloc extends Bloc<ProfileInfoEvent, ProfileInfoState> {
   }
 
   Future<void> _onGetUser(ProfileInfoGetUser event, Emitter<ProfileInfoState> emit) async {
-    AuthResponse authResponse = await authUseCases.getUserSession.run();
-    emit(
-      state.copyWith(
-        user: authResponse.user
-      )
-    );
+    final authResponse = await authUseCases.getUserSession.run();
+    if (authResponse == null) return;
+    emit(state.copyWith(user: authResponse.user));
   }
 
 }
