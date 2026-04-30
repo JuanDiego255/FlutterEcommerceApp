@@ -51,6 +51,7 @@ import 'package:ecommerce_flutter/src/domain/useCases/categories/CreateCategoryU
 import 'package:ecommerce_flutter/src/domain/useCases/categories/DeleteCategoryUseCase.dart';
 import 'package:ecommerce_flutter/src/domain/useCases/categories/GetCategoriesUseCase.dart';
 import 'package:ecommerce_flutter/src/domain/useCases/categories/UpdateCategoryUseCase.dart';
+import 'package:ecommerce_flutter/src/domain/useCases/orders/CreateOrderUseCase.dart';
 import 'package:ecommerce_flutter/src/domain/useCases/orders/GetOrdersByClientUseCase.dart';
 import 'package:ecommerce_flutter/src/domain/useCases/orders/GetOrdersUseCase.dart';
 import 'package:ecommerce_flutter/src/domain/useCases/orders/OrdersUseCases.dart';
@@ -176,7 +177,8 @@ abstract class AppModule {
   OrdersUseCases get ordersUseCases => OrdersUseCases(
     getOrders: GetOrdersUseCase(ordersRepository),
     getOrdersByClient: GetOrdersByClientUseCase(ordersRepository),
-    updateStatus: UpdateStatusOrderUseCase(ordersRepository)
+    updateStatus: UpdateStatusOrderUseCase(ordersRepository),
+    createOrder: CreateOrderUseCase(ordersRepository),
   );
 
 }

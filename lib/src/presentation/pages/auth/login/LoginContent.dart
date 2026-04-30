@@ -391,7 +391,37 @@ class _LoginContentState extends State<LoginContent> {
             ),
           ),
           const SizedBox(height: 20),
+          _registerLink(),
+          const SizedBox(height: 12),
           _privacyLink(),
+        ],
+      ),
+    );
+  }
+
+  // ─── Register link ────────────────────────────────────────────────────────
+
+  Widget _registerLink() {
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '¿No tenés cuenta? ',
+            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.pushNamed(context, 'register'),
+            child: const Text(
+              'Registrate',
+              style: TextStyle(
+                fontSize: 13,
+                color: _kPrimary,
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -1,12 +1,16 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ecommerce_flutter/injection.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/CartNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
+import 'package:ecommerce_flutter/src/domain/models/AuthResponse.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogHomeData.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogNavItem.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProduct.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/WishlistItem.dart';
+import 'package:ecommerce_flutter/src/domain/useCases/auth/AuthUseCases.dart';
 import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/bloc/CatalogHomeBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/bloc/CatalogHomeEvent.dart';
@@ -97,8 +101,20 @@ class _ContentView extends StatefulWidget {
 
 class _ContentViewState extends State<_ContentView> {
   int _selectedNavIdx = 0;
+  AuthResponse? _authSession;
 
   CatalogHomeData get data => widget.data;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuth();
+  }
+
+  Future<void> _checkAuth() async {
+    final session = await locator<AuthUseCases>().getUserSession.run();
+    if (mounted) setState(() => _authSession = session);
+  }
 
   @override
   void dispose() {
@@ -198,11 +214,51 @@ class _ContentViewState extends State<_ContentView> {
           tooltip: 'Favoritos',
           onPressed: () => Navigator.pushNamed(context, 'catalog/wishlist'),
         ),
+        // Cart icon with badge
+        ValueListenableBuilder<int>(
+          valueListenable: CartNotifier.instance,
+          builder: (_, count, __) => Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_bag_outlined, color: _kPrimary, size: 22),
+                tooltip: 'Carrito',
+                onPressed: () =>
+                    Navigator.pushNamed(context, 'client/shopping_bag'),
+              ),
+              if (count > 0)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                        color: _kAccent, shape: BoxShape.circle),
+                    child: Center(
+                      child: Text(
+                        count > 9 ? '9+' : '$count',
+                        style: const TextStyle(
+                          color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: _kSub, size: 20),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           onSelected: (value) {
-            if (value == 'admin') {
+            if (value == 'login_client') {
+              Navigator.pushNamed(context, 'login').then((_) => _checkAuth());
+            } else if (value == 'my_orders') {
+              Navigator.pushNamed(context, 'client/home');
+            } else if (value == 'profile') {
+              Navigator.pushNamed(context, 'client/home');
+            } else if (value == 'admin') {
               Navigator.pushNamed(
                 context,
                 TenantSession.hasAdminAccess ? 'login' : 'admin/token',
@@ -211,28 +267,73 @@ class _ContentViewState extends State<_ContentView> {
               Navigator.pushReplacementNamed(context, 'tenant/select');
             }
           },
-          itemBuilder: (_) => [
-            const PopupMenuItem(
-              value: 'admin',
-              child: Row(
-                children: [
-                  Icon(Icons.admin_panel_settings_outlined, size: 18, color: _kAccent),
-                  SizedBox(width: 10),
-                  Text('Panel admin', style: TextStyle(fontSize: 13)),
-                ],
+          itemBuilder: (_) {
+            final isLoggedIn = _authSession != null;
+            return [
+              if (isLoggedIn) ...[
+                PopupMenuItem(
+                  value: 'my_orders',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.receipt_long_outlined, size: 18, color: _kAccent),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Mis pedidos', style: TextStyle(fontSize: 13)),
+                          Text(
+                            _authSession!.user.name,
+                            style: const TextStyle(fontSize: 10, color: _kSub),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'profile',
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_outline, size: 18, color: _kAccent),
+                      SizedBox(width: 10),
+                      Text('Mi perfil', style: TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                ),
+              ] else
+                const PopupMenuItem(
+                  value: 'login_client',
+                  child: Row(
+                    children: [
+                      Icon(Icons.login_outlined, size: 18, color: _kAccent),
+                      SizedBox(width: 10),
+                      Text('Iniciar sesión', style: TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                ),
+              const PopupMenuItem(
+                value: 'admin',
+                child: Row(
+                  children: [
+                    Icon(Icons.admin_panel_settings_outlined, size: 18, color: _kAccent),
+                    SizedBox(width: 10),
+                    Text('Panel admin', style: TextStyle(fontSize: 13)),
+                  ],
+                ),
               ),
-            ),
-            const PopupMenuItem(
-              value: 'change',
-              child: Row(
-                children: [
-                  Icon(Icons.swap_horiz_outlined, size: 18, color: _kSub),
-                  SizedBox(width: 10),
-                  Text('Cambiar tienda', style: TextStyle(fontSize: 13)),
-                ],
+              const PopupMenuItem(
+                value: 'change',
+                child: Row(
+                  children: [
+                    Icon(Icons.swap_horiz_outlined, size: 18, color: _kSub),
+                    SizedBox(width: 10),
+                    Text('Cambiar tienda', style: TextStyle(fontSize: 13)),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ];
+          },
         ),
       ],
     );
@@ -373,7 +474,7 @@ class _ContentViewState extends State<_ContentView> {
             crossAxisCount: 2,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 0.58,
+            childAspectRatio: 0.62,
           ),
           delegate: SliverChildBuilderDelegate(
             (_, i) => _FeaturedCard(
@@ -708,7 +809,8 @@ class _FeaturedCardState extends State<_FeaturedCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
+            AspectRatio(
+              aspectRatio: 1.0,
               child: Stack(
                 children: [
                   ClipRRect(
@@ -717,6 +819,7 @@ class _FeaturedCardState extends State<_FeaturedCard> {
                         ? CachedNetworkImage(
                             imageUrl: p.imageUrl,
                             width: double.infinity,
+                            height: double.infinity,
                             fit: BoxFit.cover,
                             alignment: Alignment.topCenter,
                             memCacheWidth: 400,

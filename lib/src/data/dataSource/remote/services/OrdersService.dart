@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:ecommerce_flutter/src/data/api/ApiConfig.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
+import 'package:ecommerce_flutter/src/domain/models/Address.dart';
 import 'package:ecommerce_flutter/src/domain/models/Order.dart';
+import 'package:ecommerce_flutter/src/domain/models/Product.dart';
 import 'package:ecommerce_flutter/src/domain/utils/ListToString.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:http/http.dart' as http;
@@ -12,6 +14,7 @@ class OrdersService {
   Map<String, String> get _headers {
     final h = <String, String>{
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       'Authorization': SecureStorageService.authToken,
     };
     final appToken = TenantSession.appToken;
@@ -35,11 +38,37 @@ class OrdersService {
 
   Future<Resource<List<Order>>> getOrdersByClient(int idClient) async {
     try {
-      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/orders/$idClient');
+      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/client/orders');
       final response = await http.get(url, headers: _headers);
       final data = json.decode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
         return Success(Order.fromJsonList(data));
+      }
+      return Error(listToString(data['message']));
+    } catch (e) {
+      return Error(e.toString());
+    }
+  }
+
+  Future<Resource<Order>> createOrder(Address address, List<Product> products) async {
+    try {
+      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/client/orders');
+      final body = {
+        'address_id': address.id,
+        'items': products.map((p) => {
+          'product_id': p.id,
+          'quantity': p.quantity ?? 1,
+          'price': p.price,
+        }).toList(),
+      };
+      final response = await http.post(
+        url,
+        headers: _headers,
+        body: json.encode(body),
+      );
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return Success(Order.fromJson(data));
       }
       return Error(listToString(data['message']));
     } catch (e) {

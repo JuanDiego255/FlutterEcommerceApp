@@ -13,19 +13,21 @@ class ShoppingBagRepositoryImpl implements ShoppingBagRepository {
     final data = await sharedPref.read('shopping_bag');
     List<Product> selectedProducts = [];
     if (data == null) {
+      product.quantity ??= 1;
       selectedProducts.add(product);
       await sharedPref.save('shopping_bag', selectedProducts);
-    }
-    else {
+    } else {
       selectedProducts = Product.fromJsonList(data).toList();
-      int index = selectedProducts.indexWhere((p) => p.id == product.id);
-      if (index == -1) { // EL PRODUCTO NO EXISTE EN LA BOLSA DE COMPRAS (AñADIR)
+      // Key by both id AND selectedVariant so the same product with different
+      // variants occupies separate cart lines
+      int index = selectedProducts.indexWhere(
+          (p) => p.id == product.id && p.selectedVariant == product.selectedVariant);
+      if (index == -1) {
         product.quantity ??= 1;
         selectedProducts.add(product);
-      }
-      else { // YA EXISTE EL PRODUCTO DENTRO DE LA LISTA (ACTUALIZAR)
+      } else {
         selectedProducts[index].quantity = product.quantity;
-      } 
+      }
       await sharedPref.save('shopping_bag', selectedProducts);
     }
   }
@@ -35,7 +37,8 @@ class ShoppingBagRepositoryImpl implements ShoppingBagRepository {
     final data = await sharedPref.read('shopping_bag');
     if (data == null) { return; }
     List<Product> selectedProducts = Product.fromJsonList(data).toList();
-    selectedProducts.removeWhere((p) => p.id == product.id);
+    selectedProducts.removeWhere(
+        (p) => p.id == product.id && p.selectedVariant == product.selectedVariant);
     await sharedPref.save('shopping_bag', selectedProducts);
   }
 
@@ -63,7 +66,7 @@ class ShoppingBagRepositoryImpl implements ShoppingBagRepository {
     double total = 0;
     List<Product> selectedProducts = Product.fromJsonList(data).toList();
     selectedProducts.forEach((product) {
-      total = total + (product.quantity! * product.price);
+      total = total + (product.quantity! * product.effectivePrice);
     });
     return total;
   }

@@ -1,168 +1,189 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_flutter/src/domain/models/Product.dart';
+import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/bloc/ClientShoppingBagBloc.dart';
-import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/bloc/ClientShoppingBagState.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/bloc/ClientShoppingBagEvent.dart';
+import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/bloc/ClientShoppingBagState.dart';
 import 'package:flutter/material.dart';
+
+const _kAccent  = Color(0xFF8B6F47);
+const _kPrimary = Color(0xFF2D2D2D);
+const _kSub     = Color(0xFF757575);
+const _kDivider = Color(0xFFEEEEEE);
 
 class ClientShoppingBagItem extends StatelessWidget {
 
-  ClientShoppingBagBloc? bloc;
-  ClientShoppingBagState state;
-  Product? product;
+  final ClientShoppingBagBloc? bloc;
+  final ClientShoppingBagState state;
+  final Product? product;
 
-  ClientShoppingBagItem(this.bloc, this.state, this.product);
+  const ClientShoppingBagItem(this.bloc, this.state, this.product, {super.key});
 
   @override
   Widget build(BuildContext context) {
+    final p = product;
+    if (p == null) return const SizedBox.shrink();
+
     return Container(
-      // height: 80,
-      margin: EdgeInsets.only(left: 20, right: 20, top: 15),
-      child: Row(
-        children: [
-          _imageProduct(),
-          SizedBox(width: 15),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _textProduct(),
-              SizedBox(height: 5),
-              _actionsAddAndSubtract() 
-            ]
-          ),
-          Spacer(),
-          Column(
-            children: [
-              _textPrice(),
-              _iconRemove()
-            ],
-          )
-    
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0D000000), blurRadius: 6, offset: Offset(0, 2)),
         ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildImage(p),
+            const SizedBox(width: 12),
+            Expanded(child: _buildInfo(p)),
+            const SizedBox(width: 8),
+            _buildPriceAndDelete(p),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _actionsAddAndSubtract() {
+  Widget _buildImage(Product p) {
+    final url = p.image1;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 72,
+        height: 80,
+        child: (url != null && url.isNotEmpty)
+            ? CachedNetworkImage(
+                imageUrl: url,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
+                errorWidget: (_, __, ___) => _placeholder(),
+              )
+            : _placeholder(),
+      ),
+    );
+  }
+
+  Widget _placeholder() => Container(
+    color: const Color(0xFFF5F5F5),
+    child: const Center(child: Icon(Icons.image_outlined, color: Color(0xFFBDBDBD), size: 28)),
+  );
+
+  Widget _buildInfo(Product p) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          p.name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: _kPrimary,
+          ),
+        ),
+        if (p.selectedVariant != null && p.selectedVariant!.isNotEmpty) ...[
+          const SizedBox(height: 3),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: _kAccent.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: _kAccent.withOpacity(0.3)),
+            ),
+            child: Text(
+              p.selectedVariant!,
+              style: const TextStyle(fontSize: 10, color: _kAccent, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        _buildQtyControls(p),
+      ],
+    );
+  }
+
+  Widget _buildQtyControls(Product p) {
     return Row(
       children: [
-        GestureDetector(
-          onTap: () {
-            bloc?.add(SubtractItem(product: product!));
-          },
-          child: Container(
-            width: 35,
-            height: 35,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(25),
-                bottomLeft: Radius.circular(25),
-              )
-            ),
-            child: Text(
-              '-',
-              style: TextStyle(
-                fontSize: 20
-              ),
-            ),
-          ),
+        _qtyBtn(
+          icon: Icons.remove,
+          onTap: () => bloc?.add(SubtractItem(product: p)),
         ),
         Container(
-          width: 35,
-          height: 35,
+          width: 32,
+          height: 30,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: const Color(0xFFF5F5F5),
+            borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
-            product?.quantity.toString() ?? '',
-            style: TextStyle(
-              fontSize: 18
-            ),
+            '${p.quantity ?? 1}',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _kPrimary),
           ),
         ),
-        GestureDetector(
-          onTap: () {
-            bloc?.add(AddItem(product: product!));
-          },
-          child: Container(
-            width: 35,
-            height: 35,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.only(
-                topRight: Radius.circular(25),
-                bottomRight: Radius.circular(25),
-              )
-            ),
-            child: Text(
-              '+',
-              style: TextStyle(
-                fontSize: 20
-              ),
-            ),
-          ),
+        _qtyBtn(
+          icon: Icons.add,
+          onTap: () => bloc?.add(AddItem(product: p)),
         ),
       ],
     );
   }
 
-  Widget _textPrice() {
-    return product != null 
-    ? Text(
-      '\$${ product!.price * product!.quantity! }',
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Colors.grey
-      ),
-    )
-    : Container();
-  }
-
-  Widget _iconRemove() {
-    return IconButton(
-      onPressed: () {
-        bloc?.add(RemoveItem(product: product!));
-      }, 
-      icon: Icon(
-        Icons.delete,
-        color: Colors.red,
-      )
-    );
-  }
-
-  Widget _textProduct() {
-    return Container(
-      width: 170,
-      child: Text(
-        product?.name ?? 'Titulo del producto',
-        // overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold
+  Widget _qtyBtn({required IconData icon, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(4),
         ),
+        child: Icon(icon, size: 15, color: _kPrimary),
       ),
     );
   }
 
-  Widget _imageProduct() {
-    return  product != null 
-    ? Container(
-      width: 70,
-      child: product!.image1!.isNotEmpty ? 
-      FadeInImage.assetNetwork(
-        placeholder: 'assets/img/no-image.png', 
-        image: product!.image1!,
-        fit: BoxFit.contain,
-        fadeInDuration: Duration(seconds: 1),
-      ) : Container(),
-    ) 
-    : Image.asset(
-      'assets/img/no-image.png',
-      width: 80,
+  Widget _buildPriceAndDelete(Product p) {
+    final lineTotal = p.effectivePrice * (p.quantity ?? 1);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          '₡${fmtPrice(lineTotal)}',
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: _kAccent,
+          ),
+        ),
+        if (p.variantPrice != null && p.variantPrice! > 0) ...[
+          const SizedBox(height: 2),
+          Text(
+            '₡${fmtPrice(p.effectivePrice)} c/u',
+            style: const TextStyle(fontSize: 10, color: _kSub),
+          ),
+        ],
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () => bloc?.add(RemoveItem(product: p)),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+          ),
+        ),
+      ],
     );
   }
 }

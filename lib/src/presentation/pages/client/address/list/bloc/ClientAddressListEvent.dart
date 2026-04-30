@@ -46,3 +46,7 @@ class OnPaymentSubmit extends ClientAddressListEvent {
 class OnPaymentStripeSubmit extends ClientAddressListEvent {
   const OnPaymentStripeSubmit();
 }
+
+class OnConfirmOrder extends ClientAddressListEvent {
+  const OnConfirmOrder();
+}

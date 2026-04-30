@@ -1,10 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ecommerce_flutter/injection.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/CartNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
+import 'package:ecommerce_flutter/src/domain/models/Product.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProduct.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProductDetail.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/WishlistItem.dart';
+import 'package:ecommerce_flutter/src/domain/useCases/ShoppingBag/ShoppingBagUseCases.dart';
 import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:ecommerce_flutter/src/presentation/widgets/FullScreenImagePage.dart';
@@ -663,19 +667,36 @@ class _DetailViewState extends State<_DetailView> {
           ),
           child: Row(
             children: [
+              // Secondary: small WhatsApp icon
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF25D366).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF25D366).withOpacity(0.35)),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.chat_outlined, color: Color(0xFF25D366), size: 20),
+                  onPressed: _shareWhatsApp,
+                  tooltip: 'Consultar por WhatsApp',
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Primary: add to cart
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
+                    backgroundColor: _kPrimary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  icon: const Icon(Icons.chat_outlined, size: 18),
-                  onPressed: _shareWhatsApp,
+                  icon: const Icon(Icons.shopping_bag_outlined, size: 18),
+                  onPressed: _addToCart,
                   label: const Text(
-                    'Consultar por WhatsApp',
+                    'Agregar al carrito',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -686,6 +707,63 @@ class _DetailViewState extends State<_DetailView> {
       );
 
   // ─── Actions ─────────────────────────────────────────────────────────────────
+
+  Future<void> _addToCart() async {
+    // If variants exist and none is selected, prompt user to pick one
+    if (_detail != null && _detail!.variants.isNotEmpty && _selectedVariant == null) {
+      if (_detail!.variants.length == 1) {
+        setState(() => _selectedVariant = _detail!.variants.first);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Por favor seleccioná una variante primero'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
+
+    final variantLabel = _selectedVariant?.label;
+    final double? vPrice =
+        (_selectedVariant != null && _selectedVariant!.hasCustomPrice)
+            ? _selectedVariant!.price
+            : null;
+
+    final product = Product(
+      id: widget.product.id,
+      name: widget.product.name,
+      description: _detail?.description ?? widget.product.name,
+      image1: widget.product.imageUrl.isNotEmpty ? widget.product.imageUrl : null,
+      image2: null,
+      idCategory: 0,
+      price: widget.product.finalPrice,
+      quantity: 1,
+      selectedVariant: variantLabel,
+      variantPrice: vPrice,
+    );
+
+    await locator<ShoppingBagUseCases>().add.run(product);
+
+    final allProducts = await locator<ShoppingBagUseCases>().getProducts.run();
+    CartNotifier.instance.update(allProducts.length);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(variantLabel != null
+            ? '${widget.product.name} ($variantLabel) agregado al carrito'
+            : '${widget.product.name} agregado al carrito'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+        action: SnackBarAction(
+          label: 'Ver carrito',
+          textColor: _kAccent,
+          onPressed: () => Navigator.pushNamed(context, 'client/shopping_bag'),
+        ),
+      ),
+    );
+  }
 
   void _share() async {
     final price = _displayPrice;

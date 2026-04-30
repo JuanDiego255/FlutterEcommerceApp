@@ -59,7 +59,7 @@ List<BlocProvider> blocProviders = [
   BlocProvider<ClientProductDetailBloc>(create: (context) => ClientProductDetailBloc(locator<ShoppingBagUseCases>())),
   BlocProvider<ClientShoppingBagBloc>(create: (context) => ClientShoppingBagBloc(locator<ShoppingBagUseCases>())),
   BlocProvider<ClientAddressCreateBloc>(create: (context) => ClientAddressCreateBloc(locator<AddressUseCases>(), locator<AuthUseCases>())..add(ClientAddressCreateInitEvent())),
-  BlocProvider<ClientAddressListBloc>(create: (context) => ClientAddressListBloc(locator<AddressUseCases>(), locator<AuthUseCases>(), locator<ShoppingBagUseCases>())),
+  BlocProvider<ClientAddressListBloc>(create: (context) => ClientAddressListBloc(locator<AddressUseCases>(), locator<AuthUseCases>(), locator<ShoppingBagUseCases>(), locator<OrdersUseCases>())),
   BlocProvider<ClientPaymentFormBloc>(create: (context) => ClientPaymentFormBloc(locator<MercadoPagoUseCases>(), locator<ShoppingBagUseCases>())..add(ClientPaymentFormInitEvent())),
   BlocProvider<ClientPaymentInstallmentsBloc>(create: (context) => 
     ClientPaymentInstallmentsBloc(

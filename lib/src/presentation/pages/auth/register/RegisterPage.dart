@@ -48,9 +48,12 @@ class _RegisterPageState extends State<RegisterPage> {
             else if (responseState is Success) {
               _bloc?.add(RegisterFormReset());
               Fluttertoast.showToast(
-                msg: 'Registro exitoso',
+                msg: 'Registro exitoso. Iniciá sesión con tu cuenta.',
                 toastLength: Toast.LENGTH_LONG
               );
+              Future.delayed(const Duration(milliseconds: 500), () {
+                if (mounted) Navigator.pushReplacementNamed(context, 'login');
+              });
             }
           },
           child: BlocBuilder<RegisterBloc, RegisterState>(

@@ -48,7 +48,16 @@ class _LoginPageState extends State<LoginPage> {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 final authResponse = responseState.data as AuthResponse;
                 _bloc?.add(LoginSaveUserSession(authResponse: authResponse));
-                Navigator.pushNamedAndRemoveUntil(context, 'admin/home', (route) => false);
+                final roles = authResponse.user.roles ?? [];
+                final String nextRoute;
+                if (roles.length == 1) {
+                  nextRoute = roles.first.route;
+                } else if (roles.isEmpty) {
+                  nextRoute = 'catalog/home';
+                } else {
+                  nextRoute = 'roles';
+                }
+                Navigator.pushNamedAndRemoveUntil(context, nextRoute, (route) => false);
               });
             }
           },
