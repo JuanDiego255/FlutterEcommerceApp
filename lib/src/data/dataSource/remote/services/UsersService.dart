@@ -15,8 +15,10 @@ class UsersService {
   Map<String, String> get _headers {
     final h = <String, String>{
       'Content-Type': 'application/json',
-      'Authorization': SecureStorageService.authToken,
+      'Accept': 'application/json',
     };
+    final token = SecureStorageService.authToken;
+    if (token.isNotEmpty) h['Authorization'] = 'Bearer $token';
     final appToken = TenantSession.appToken;
     if (appToken != null && appToken.isNotEmpty) h['X-App-Token'] = appToken;
     return h;
@@ -45,7 +47,8 @@ class UsersService {
     try {
       final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/users/upload/$id');
       final request = http.MultipartRequest('PUT', url);
-      request.headers['Authorization'] = SecureStorageService.authToken;
+      final _t = SecureStorageService.authToken;
+      if (_t.isNotEmpty) request.headers['Authorization'] = 'Bearer $_t';
       final appToken = TenantSession.appToken;
       if (appToken != null && appToken.isNotEmpty) request.headers['X-App-Token'] = appToken;
       request.files.add(http.MultipartFile(

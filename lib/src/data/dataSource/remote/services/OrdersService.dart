@@ -15,25 +15,12 @@ class OrdersService {
     final h = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'Authorization': SecureStorageService.authToken,
     };
+    final token = SecureStorageService.authToken;
+    if (token.isNotEmpty) h['Authorization'] = 'Bearer $token';
     final appToken = TenantSession.appToken;
     if (appToken != null && appToken.isNotEmpty) h['X-App-Token'] = appToken;
     return h;
-  }
-
-  Future<Resource<List<Order>>> getOrders() async {
-    try {
-      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/orders');
-      final response = await http.get(url, headers: _headers);
-      final data = json.decode(response.body);
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return Success(Order.fromJsonList(data));
-      }
-      return Error(listToString(data['message']));
-    } catch (e) {
-      return Error(e.toString());
-    }
   }
 
   Future<Resource<List<Order>>> getOrdersByClient(int idClient) async {
@@ -58,7 +45,7 @@ class OrdersService {
         'items': products.map((p) => {
           'product_id': p.id,
           'quantity': p.quantity ?? 1,
-          'price': p.price,
+          'price': p.effectivePrice,
         }).toList(),
       };
       final response = await http.post(
@@ -66,20 +53,6 @@ class OrdersService {
         headers: _headers,
         body: json.encode(body),
       );
-      final data = json.decode(response.body);
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return Success(Order.fromJson(data));
-      }
-      return Error(listToString(data['message']));
-    } catch (e) {
-      return Error(e.toString());
-    }
-  }
-
-  Future<Resource<Order>> updateStatus(int id) async {
-    try {
-      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/orders/$id');
-      final response = await http.put(url, headers: _headers);
       final data = json.decode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
         return Success(Order.fromJson(data));

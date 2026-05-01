@@ -6,6 +6,7 @@ import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistNotifier.dar
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
 import 'package:ecommerce_flutter/src/domain/models/AuthResponse.dart';
+import 'package:ecommerce_flutter/src/domain/models/Order.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogHomeData.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogNavItem.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProduct.dart';
@@ -15,9 +16,14 @@ import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/bloc/CatalogHomeBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/bloc/CatalogHomeEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/bloc/CatalogHomeState.dart';
+import 'package:ecommerce_flutter/src/presentation/pages/client/order/list/ClientOrderListItem.dart';
+import 'package:ecommerce_flutter/src/presentation/pages/client/order/list/bloc/ClientOrderListBloc.dart';
+import 'package:ecommerce_flutter/src/presentation/pages/client/order/list/bloc/ClientOrderListEvent.dart';
+import 'package:ecommerce_flutter/src/presentation/pages/client/order/list/bloc/ClientOrderListState.dart';
 import 'package:ecommerce_flutter/src/presentation/widgets/FullScreenImagePage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // Virtual "Inicio" nav item (id < 0 → never maps to a real category)
@@ -38,72 +44,24 @@ class CatalogHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => CatalogHomeBloc(CatalogService())..add(CatalogHomeLoad()),
-      child: const _CatalogHomeView(),
+      child: const _CatalogShell(),
     );
   }
 }
 
-class _CatalogHomeView extends StatefulWidget {
-  const _CatalogHomeView();
+// ─── Shell: owns BottomNav + auth state ───────────────────────────────────────
+
+class _CatalogShell extends StatefulWidget {
+  const _CatalogShell();
 
   @override
-  State<_CatalogHomeView> createState() => _CatalogHomeViewState();
+  State<_CatalogShell> createState() => _CatalogShellState();
 }
 
-class _CatalogHomeViewState extends State<_CatalogHomeView> {
-  final _searchCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _kBg,
-      body: BlocBuilder<CatalogHomeBloc, CatalogHomeState>(
-        builder: (context, state) {
-          if (state is CatalogHomeLoading || state is CatalogHomeInitial) {
-            return const _LoadingView();
-          }
-          if (state is CatalogHomeError) {
-            return _ErrorView(
-              message: state.message,
-              onRetry: () => context.read<CatalogHomeBloc>().add(CatalogHomeLoad()),
-            );
-          }
-          if (state is CatalogHomeLoaded) {
-            return _ContentView(
-              data: state.data,
-              searchCtrl: _searchCtrl,
-            );
-          }
-          return const SizedBox.shrink();
-        },
-      ),
-    );
-  }
-}
-
-// ─── Content view ─────────────────────────────────────────────────────────────
-
-class _ContentView extends StatefulWidget {
-  final CatalogHomeData data;
-  final TextEditingController searchCtrl;
-
-  const _ContentView({required this.data, required this.searchCtrl});
-
-  @override
-  State<_ContentView> createState() => _ContentViewState();
-}
-
-class _ContentViewState extends State<_ContentView> {
-  int _selectedNavIdx = 0;
+class _CatalogShellState extends State<_CatalogShell> {
+  int _navIndex = 0;
   AuthResponse? _authSession;
-
-  CatalogHomeData get data => widget.data;
+  final _searchCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -111,24 +69,478 @@ class _ContentViewState extends State<_ContentView> {
     _checkAuth();
   }
 
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _checkAuth() async {
     final session = await locator<AuthUseCases>().getUserSession.run();
     if (mounted) setState(() => _authSession = session);
   }
 
-  @override
-  void dispose() {
-    super.dispose();
+  bool get _isLoggedIn => _authSession != null;
+
+  void _onNavTap(int i) {
+    if (i == 2 && !_isLoggedIn) {
+      Navigator.pushNamed(context, 'login').then((_) => _checkAuth());
+      return;
+    }
+    if (i == 2 && _isLoggedIn && _navIndex != 2) {
+      context.read<ClientOrderListBloc>().add(GetOrders());
+    }
+    if (_navIndex != i) setState(() => _navIndex = i);
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _kBg,
+      body: IndexedStack(
+        index: _navIndex,
+        children: [
+          _CatalogTab(searchCtrl: _searchCtrl, authSession: _authSession, onAuthChanged: _checkAuth),
+          _CategoriesTab(onAuthChanged: _checkAuth),
+          _AccountTab(authSession: _authSession, onLoginTap: () {
+            Navigator.pushNamed(context, 'login').then((_) {
+              _checkAuth();
+              setState(() => _navIndex = 2);
+            });
+          }),
+        ],
+      ),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 12, offset: const Offset(0, -2)),
+        ],
+      ),
+      child: BottomNavigationBar(
+        currentIndex: _navIndex,
+        onTap: _onNavTap,
+        backgroundColor: Colors.white,
+        selectedItemColor: _kAccent,
+        unselectedItemColor: const Color(0xFF9E9E9E),
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
+        unselectedLabelStyle: const TextStyle(fontSize: 11),
+        elevation: 0,
+        type: BottomNavigationBarType.fixed,
+        items: [
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Inicio',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.category_outlined),
+            activeIcon: Icon(Icons.category),
+            label: 'Categorías',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(_isLoggedIn ? Icons.receipt_long_outlined : Icons.person_outline),
+            activeIcon: Icon(_isLoggedIn ? Icons.receipt_long : Icons.person),
+            label: _isLoggedIn ? 'Mis pedidos' : 'Mi cuenta',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Tab 0: Catalog home ──────────────────────────────────────────────────────
+
+class _CatalogTab extends StatelessWidget {
+  final TextEditingController searchCtrl;
+  final AuthResponse? authSession;
+  final VoidCallback onAuthChanged;
+
+  const _CatalogTab({required this.searchCtrl, this.authSession, required this.onAuthChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<CatalogHomeBloc, CatalogHomeState>(
+      builder: (context, state) {
+        if (state is CatalogHomeLoading || state is CatalogHomeInitial) {
+          return const _LoadingView();
+        }
+        if (state is CatalogHomeError) {
+          return _ErrorView(
+            message: state.message,
+            onRetry: () => context.read<CatalogHomeBloc>().add(CatalogHomeLoad()),
+          );
+        }
+        if (state is CatalogHomeLoaded) {
+          return _ContentView(
+            data: state.data,
+            searchCtrl: searchCtrl,
+            authSession: authSession,
+            onAuthChanged: onAuthChanged,
+          );
+        }
+        return const _LoadingView();
+      },
+    );
+  }
+}
+
+// ─── Tab 1: Categories browser ────────────────────────────────────────────────
+
+class _CategoriesTab extends StatelessWidget {
+  final VoidCallback onAuthChanged;
+
+  const _CategoriesTab({required this.onAuthChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<CatalogHomeBloc, CatalogHomeState>(
+      builder: (context, state) {
+        if (state is CatalogHomeLoaded) {
+          return _CategoriesView(data: state.data);
+        }
+        return const _LoadingView();
+      },
+    );
+  }
+}
+
+class _CategoriesView extends StatelessWidget {
+  final CatalogHomeData data;
+
+  const _CategoriesView({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = data.navItems;
+    final label = data.navType == 'departments' ? 'Departamentos' : 'Categorías';
+
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          backgroundColor: _kCard,
+          elevation: 0,
+          scrolledUnderElevation: 1,
+          shadowColor: _kDivider,
+          title: Text(
+            label,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _kPrimary),
+          ),
+        ),
+        if (items.isEmpty)
+          const SliverFillRemaining(
+            child: Center(
+              child: Text('No hay categorías disponibles', style: TextStyle(color: _kSub)),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.9,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (_, i) => _CategoryGridCard(item: items[i]),
+                childCount: items.length,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _CategoryGridCard extends StatelessWidget {
+  final CatalogNavItem item;
+
+  const _CategoryGridCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(
+        context,
+        'catalog/products',
+        arguments: {'item': item, 'is_department': false},
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _kCard,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2))],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: _kAccent.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _kDivider),
+              ),
+              child: item.imageUrl.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: CachedNetworkImage(
+                        imageUrl: item.imageUrl,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => const Icon(Icons.category_outlined, size: 28, color: _kAccent),
+                      ),
+                    )
+                  : const Icon(Icons.category_outlined, size: 28, color: _kAccent),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Text(
+                item.name,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _kPrimary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Tab 2: Account (orders if logged in, login prompt if not) ────────────────
+
+class _AccountTab extends StatefulWidget {
+  final AuthResponse? authSession;
+  final VoidCallback onLoginTap;
+
+  const _AccountTab({this.authSession, required this.onLoginTap});
+
+  @override
+  State<_AccountTab> createState() => _AccountTabState();
+}
+
+class _AccountTabState extends State<_AccountTab> {
+  @override
+  void didUpdateWidget(_AccountTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.authSession == null && widget.authSession != null) {
+      // Just logged in — load orders
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<ClientOrderListBloc>().add(GetOrders());
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.authSession == null) {
+      return _buildLoginPrompt(context);
+    }
+    return _buildOrdersView(context);
+  }
+
+  Widget _buildLoginPrompt(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                color: _kAccent.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.person_outline, size: 48, color: _kAccent),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Mis pedidos',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _kPrimary),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Iniciá sesión para ver el historial de tus pedidos.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: widget.onLoginTap,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _kAccent,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Iniciar sesión', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.pushNamed(context, 'register'),
+              child: const Text('¿No tenés cuenta? Registrate', style: TextStyle(color: _kAccent, fontSize: 13)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrdersView(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        children: [
+          // Header
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(20, 16, 8, 16),
+            child: Row(
+              children: [
+                const Text(
+                  'Mis pedidos',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _kPrimary),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.refresh_outlined, color: _kAccent),
+                  tooltip: 'Actualizar',
+                  onPressed: () => context.read<ClientOrderListBloc>().add(GetOrders()),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: _kDivider),
+          // Orders list
+          Expanded(
+            child: BlocListener<ClientOrderListBloc, ClientOrderListState>(
+              listener: (context, state) {
+                if (state.response is Error) {
+                  Fluttertoast.showToast(
+                    msg: (state.response as Error).message,
+                    toastLength: Toast.LENGTH_LONG,
+                  );
+                }
+              },
+              child: BlocBuilder<ClientOrderListBloc, ClientOrderListState>(
+                builder: (context, state) {
+                  final resp = state.response;
+                  if (resp is Loading) {
+                    return const Center(child: CircularProgressIndicator(color: _kAccent));
+                  }
+                  if (resp is Success) {
+                    final orders = resp.data as List<Order>;
+                    if (orders.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.receipt_long_outlined, size: 72, color: Colors.grey[300]),
+                            const SizedBox(height: 16),
+                            Text('No tenés pedidos aún',
+                                style: TextStyle(fontSize: 16, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                            const SizedBox(height: 8),
+                            Text('Tus pedidos aparecerán aquí',
+                                style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+                          ],
+                        ),
+                      );
+                    }
+                    return RefreshIndicator(
+                      color: _kAccent,
+                      onRefresh: () async => context.read<ClientOrderListBloc>().add(GetOrders()),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: orders.length,
+                        itemBuilder: (_, i) => ClientOrderListItem(orders[i]),
+                      ),
+                    );
+                  }
+                  if (resp is Error) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+                            const SizedBox(height: 12),
+                            Text((resp).message,
+                                style: const TextStyle(color: Colors.grey),
+                                textAlign: TextAlign.center),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _kAccent,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: () => context.read<ClientOrderListBloc>().add(GetOrders()),
+                              child: const Text('Reintentar'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  return const Center(child: CircularProgressIndicator(color: _kAccent));
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Content view (Tab 0 loaded state) ───────────────────────────────────────
+
+class _ContentView extends StatefulWidget {
+  final CatalogHomeData data;
+  final TextEditingController searchCtrl;
+  final AuthResponse? authSession;
+  final VoidCallback onAuthChanged;
+
+  const _ContentView({
+    required this.data,
+    required this.searchCtrl,
+    this.authSession,
+    required this.onAuthChanged,
+  });
+
+  @override
+  State<_ContentView> createState() => _ContentViewState();
+}
+
+class _ContentViewState extends State<_ContentView> {
+  int _selectedNavIdx = 0;
+
+  CatalogHomeData get data => widget.data;
+  AuthResponse? get _authSession => widget.authSession;
 
   void _openProducts(CatalogNavItem item, {bool isDept = false}) {
     Navigator.pushNamed(
       context,
       'catalog/products',
-      arguments: {
-        'item': item,
-        'is_department': isDept,
-      },
+      arguments: {'item': item, 'is_department': isDept},
     ).then((_) {
       if (mounted) setState(() => _selectedNavIdx = 0);
     });
@@ -159,12 +571,12 @@ class _ContentViewState extends State<_ContentView> {
         _buildNavSection(),
         ..._buildFeaturedSlivers(),
         _buildFooter(),
-        const SliverToBoxAdapter(child: SizedBox(height: 80)),
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
     );
   }
 
-  // ─── App bar with logo + title + admin button ─────────────────────────────
+  // ─── App bar ──────────────────────────────────────────────────────────────
 
   SliverAppBar _buildAppBar() {
     final info = data.tenantInfo;
@@ -192,28 +604,13 @@ class _ContentViewState extends State<_ContentView> {
           Expanded(
             child: Text(
               info.title.isNotEmpty ? info.title : TenantSession.host,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: _kPrimary,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _kPrimary),
               overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
       ),
       actions: [
-        if (info.whatsapp != null && info.whatsapp!.isNotEmpty)
-          IconButton(
-            icon: const Icon(Icons.chat_outlined, color: Color(0xFF25D366)),
-            tooltip: 'WhatsApp',
-            onPressed: () => _launchUrl(info.whatsappUrl),
-          ),
-        IconButton(
-          icon: const Icon(Icons.favorite_border, color: _kAccent, size: 22),
-          tooltip: 'Favoritos',
-          onPressed: () => Navigator.pushNamed(context, 'catalog/wishlist'),
-        ),
         // Cart icon with badge
         ValueListenableBuilder<int>(
           valueListenable: CartNotifier.instance,
@@ -223,8 +620,7 @@ class _ContentViewState extends State<_ContentView> {
               IconButton(
                 icon: const Icon(Icons.shopping_bag_outlined, color: _kPrimary, size: 22),
                 tooltip: 'Carrito',
-                onPressed: () =>
-                    Navigator.pushNamed(context, 'client/shopping_bag'),
+                onPressed: () => Navigator.pushNamed(context, 'client/shopping_bag'),
               ),
               if (count > 0)
                 Positioned(
@@ -233,14 +629,11 @@ class _ContentViewState extends State<_ContentView> {
                   child: Container(
                     width: 16,
                     height: 16,
-                    decoration: const BoxDecoration(
-                        color: _kAccent, shape: BoxShape.circle),
+                    decoration: const BoxDecoration(color: _kAccent, shape: BoxShape.circle),
                     child: Center(
                       child: Text(
                         count > 9 ? '9+' : '$count',
-                        style: const TextStyle(
-                          color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700,
-                        ),
+                        style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
@@ -253,93 +646,46 @@ class _ContentViewState extends State<_ContentView> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           onSelected: (value) {
             if (value == 'login_client') {
-              Navigator.pushNamed(context, 'login').then((_) => _checkAuth());
-            } else if (value == 'my_orders') {
-              Navigator.pushNamed(context, 'client/home');
-            } else if (value == 'profile') {
-              Navigator.pushNamed(context, 'client/home');
+              Navigator.pushNamed(context, 'login').then((_) => widget.onAuthChanged());
             } else if (value == 'admin') {
-              Navigator.pushNamed(
-                context,
-                TenantSession.hasAdminAccess ? 'login' : 'admin/token',
-              );
+              Navigator.pushNamed(context, TenantSession.hasAdminAccess ? 'login' : 'admin/token');
             } else if (value == 'change') {
               Navigator.pushReplacementNamed(context, 'tenant/select');
             }
           },
-          itemBuilder: (_) {
-            final isLoggedIn = _authSession != null;
-            return [
-              if (isLoggedIn) ...[
-                PopupMenuItem(
-                  value: 'my_orders',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.receipt_long_outlined, size: 18, color: _kAccent),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('Mis pedidos', style: TextStyle(fontSize: 13)),
-                          Text(
-                            _authSession!.user.name,
-                            style: const TextStyle(fontSize: 10, color: _kSub),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'profile',
-                  child: Row(
-                    children: [
-                      Icon(Icons.person_outline, size: 18, color: _kAccent),
-                      SizedBox(width: 10),
-                      Text('Mi perfil', style: TextStyle(fontSize: 13)),
-                    ],
-                  ),
-                ),
-              ] else
-                const PopupMenuItem(
-                  value: 'login_client',
-                  child: Row(
-                    children: [
-                      Icon(Icons.login_outlined, size: 18, color: _kAccent),
-                      SizedBox(width: 10),
-                      Text('Iniciar sesión', style: TextStyle(fontSize: 13)),
-                    ],
-                  ),
-                ),
+          itemBuilder: (_) => [
+            if (_authSession == null)
               const PopupMenuItem(
-                value: 'admin',
-                child: Row(
-                  children: [
-                    Icon(Icons.admin_panel_settings_outlined, size: 18, color: _kAccent),
-                    SizedBox(width: 10),
-                    Text('Panel admin', style: TextStyle(fontSize: 13)),
-                  ],
-                ),
+                value: 'login_client',
+                child: Row(children: [
+                  Icon(Icons.login_outlined, size: 18, color: _kAccent),
+                  SizedBox(width: 10),
+                  Text('Iniciar sesión', style: TextStyle(fontSize: 13)),
+                ]),
               ),
-              const PopupMenuItem(
-                value: 'change',
-                child: Row(
-                  children: [
-                    Icon(Icons.swap_horiz_outlined, size: 18, color: _kSub),
-                    SizedBox(width: 10),
-                    Text('Cambiar tienda', style: TextStyle(fontSize: 13)),
-                  ],
-                ),
-              ),
-            ];
-          },
+            const PopupMenuItem(
+              value: 'admin',
+              child: Row(children: [
+                Icon(Icons.admin_panel_settings_outlined, size: 18, color: _kAccent),
+                SizedBox(width: 10),
+                Text('Panel admin', style: TextStyle(fontSize: 13)),
+              ]),
+            ),
+            const PopupMenuItem(
+              value: 'change',
+              child: Row(children: [
+                Icon(Icons.swap_horiz_outlined, size: 18, color: _kSub),
+                SizedBox(width: 10),
+                Text('Cambiar tienda', style: TextStyle(fontSize: 13)),
+              ]),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  // ─── Announcement banner ──────────────────────────────────────────────────
+  // ─── Cintillo ─────────────────────────────────────────────────────────────
 
   SliverToBoxAdapter _buildCintillo() => SliverToBoxAdapter(
     child: Container(
@@ -349,11 +695,7 @@ class _ContentViewState extends State<_ContentView> {
       child: Text(
         data.tenantInfo.textCintillo!,
         textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
+        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
       ),
     ),
   );
@@ -387,24 +729,15 @@ class _ContentViewState extends State<_ContentView> {
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(vertical: 0),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _kDivider),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _kDivider),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _kAccent),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _kDivider)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _kDivider)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _kAccent)),
         ),
       ),
     ),
   );
 
-  // ─── Navigation (categories or departments) ───────────────────────────────
+  // ─── Nav section ──────────────────────────────────────────────────────────
 
   SliverToBoxAdapter _buildNavSection() {
     if (data.navItems.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
@@ -417,11 +750,7 @@ class _ContentViewState extends State<_ContentView> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
             child: Text(
               data.navType == 'departments' ? 'Departamentos' : 'Categorías',
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: _kPrimary,
-              ),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary),
             ),
           ),
           SizedBox(
@@ -453,7 +782,7 @@ class _ContentViewState extends State<_ContentView> {
     );
   }
 
-  // ─── Featured products section ────────────────────────────────────────────
+  // ─── Featured products ────────────────────────────────────────────────────
 
   List<Widget> _buildFeaturedSlivers() {
     if (data.featured.isEmpty) return [];
@@ -461,10 +790,8 @@ class _ContentViewState extends State<_ContentView> {
       const SliverToBoxAdapter(
         child: Padding(
           padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
-          child: Text(
-            'Destacados',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary),
-          ),
+          child: Text('Destacados',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
         ),
       ),
       SliverPadding(
@@ -496,11 +823,10 @@ class _ContentViewState extends State<_ContentView> {
 
   SliverToBoxAdapter _buildFooter() {
     final info = data.tenantInfo;
-    final hasSocial = data.social.isNotEmpty;
     final hasWa    = info.whatsapp?.isNotEmpty ?? false;
     final hasEmail = info.email?.isNotEmpty ?? false;
-    final hasContact = hasWa || hasEmail;
-    if (!hasSocial && !hasContact && (info.footer?.isEmpty ?? true) && info.title.isEmpty) {
+    final hasSocial = data.social.isNotEmpty;
+    if (!hasSocial && !hasWa && !hasEmail && (info.footer?.isEmpty ?? true) && info.title.isEmpty) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
 
@@ -511,21 +837,14 @@ class _ContentViewState extends State<_ContentView> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: const [
-              BoxShadow(color: Color(0x0C000000), blurRadius: 20, offset: Offset(0, 4)),
-            ],
+            boxShadow: const [BoxShadow(color: Color(0x0C000000), blurRadius: 20, offset: Offset(0, 4))],
           ),
           child: Column(
             children: [
-              // ── Gradient header ──────────────────────────────────────
               Container(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                 decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF6B4F30), _kAccent],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  gradient: LinearGradient(colors: [Color(0xFF6B4F30), _kAccent], begin: Alignment.topLeft, end: Alignment.bottomRight),
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: Row(
@@ -538,11 +857,8 @@ class _ContentViewState extends State<_ContentView> {
                           width: 44,
                           height: 44,
                           fit: BoxFit.contain,
-                          errorWidget: (_, __, ___) => const Icon(
-                            Icons.storefront_rounded,
-                            color: Colors.white,
-                            size: 28,
-                          ),
+                          errorWidget: (_, __, ___) =>
+                              const Icon(Icons.storefront_rounded, color: Colors.white, size: 28),
                         ),
                       )
                     else
@@ -553,25 +869,10 @@ class _ContentViewState extends State<_ContentView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (info.title.isNotEmpty)
-                            Text(
-                              info.title,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                            Text(info.title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                           if (info.footer?.isNotEmpty ?? false) ...[
                             const SizedBox(height: 3),
-                            Text(
-                              info.footer!,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 12,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            Text(info.footer!, style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
                           ],
                         ],
                       ),
@@ -579,84 +880,61 @@ class _ContentViewState extends State<_ContentView> {
                   ],
                 ),
               ),
-
-              // ── Contact + social ─────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (hasContact) ...[
+                    if (hasWa || hasEmail) ...[
                       Row(
                         children: [
                           if (hasWa)
-                            Expanded(
-                              child: _ContactChip(
-                                icon: Icons.chat_rounded,
-                                label: 'WhatsApp',
-                                color: const Color(0xFF25D366),
-                                onTap: () => _launchUrl(info.whatsappUrl),
-                              ),
-                            ),
+                            Expanded(child: _ContactChip(
+                              icon: Icons.chat_rounded,
+                              label: 'WhatsApp',
+                              color: const Color(0xFF25D366),
+                              onTap: () => _launchUrl(info.whatsappUrl),
+                            )),
                           if (hasWa && hasEmail) const SizedBox(width: 10),
                           if (hasEmail)
-                            Expanded(
-                              child: _ContactChip(
-                                icon: Icons.email_rounded,
-                                label: info.email!,
-                                color: _kAccent,
-                                onTap: () => _launchUrl('mailto:${info.email}'),
-                              ),
-                            ),
+                            Expanded(child: _ContactChip(
+                              icon: Icons.email_rounded,
+                              label: info.email!,
+                              color: _kAccent,
+                              onTap: () => _launchUrl('mailto:${info.email}'),
+                            )),
                         ],
                       ),
                       if (hasSocial) const SizedBox(height: 12),
                     ],
-                    if (hasSocial) ...[
+                    if (hasSocial)
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: data.social
                             .where((s) => s.url?.isNotEmpty ?? false)
-                            .map(
-                              (s) => GestureDetector(
-                                onTap: () => _launchUrl(s.url!),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF5F0EB),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: _kDivider),
-                                  ),
-                                  child: Text(
-                                    s.name,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: _kAccent,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
+                            .map((s) => GestureDetector(
+                              onTap: () => _launchUrl(s.url!),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F0EB),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: _kDivider),
                                 ),
+                                child: Text(s.name, style: const TextStyle(fontSize: 11, color: _kAccent, fontWeight: FontWeight.w500)),
                               ),
-                            )
+                            ))
                             .toList(),
                       ),
-                    ],
                     const SizedBox(height: 14),
                     const Divider(height: 1, color: _kDivider),
                     const SizedBox(height: 10),
                     GestureDetector(
-                      onTap: () =>
-                          _launchUrl('https://${TenantSession.host}/privacy-policy'),
+                      onTap: () => _launchUrl('https://${TenantSession.host}/privacy-policy'),
                       child: Text(
                         'Política de privacidad',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[500],
-                          decoration: TextDecoration.underline,
-                          decorationColor: Colors.grey[400],
-                        ),
+                        style: TextStyle(fontSize: 11, color: Colors.grey[500], decoration: TextDecoration.underline, decorationColor: Colors.grey[400]),
                       ),
                     ),
                   ],
@@ -671,24 +949,18 @@ class _ContentViewState extends State<_ContentView> {
 
   void _launchUrl(String url) async {
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }
 
-// ─── Nav chip ──────────────────────────────────────────────────────────────────
+// ─── Nav chip ─────────────────────────────────────────────────────────────────
 
 class _NavChip extends StatelessWidget {
   final CatalogNavItem item;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _NavChip({
-    required this.item,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _NavChip({required this.item, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -703,26 +975,16 @@ class _NavChip extends StatelessWidget {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? _kAccent.withOpacity(0.12)
-                    : Colors.white,
+                color: isSelected ? _kAccent.withOpacity(0.12) : Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isSelected ? _kAccent : _kDivider,
-                  width: isSelected ? 2 : 1,
-                ),
+                border: Border.all(color: isSelected ? _kAccent : _kDivider, width: isSelected ? 2 : 1),
               ),
               child: item.imageUrl.isNotEmpty
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(14),
-                      child: CachedNetworkImage(
-                        imageUrl: item.imageUrl,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) =>
-                            _categoryIcon(isSelected),
-                      ),
+                      child: CachedNetworkImage(imageUrl: item.imageUrl, fit: BoxFit.cover, errorWidget: (_, __, ___) => _icon()),
                     )
-                  : _categoryIcon(isSelected),
+                  : _icon(),
             ),
             const SizedBox(height: 4),
             Text(
@@ -732,8 +994,7 @@ class _NavChip extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 10,
-                fontWeight:
-                    isSelected ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected ? _kAccent : _kSub,
               ),
             ),
@@ -743,14 +1004,10 @@ class _NavChip extends StatelessWidget {
     );
   }
 
-  Widget _categoryIcon(bool selected) => Icon(
-        item.id < 0 ? Icons.home_rounded : Icons.category_outlined,
-        size: 22,
-        color: selected ? _kAccent : _kSub,
-      );
+  Widget _icon() => Icon(item.id < 0 ? Icons.home_rounded : Icons.category_outlined, size: 22, color: isSelected ? _kAccent : _kSub);
 }
 
-// ─── Featured card (stateful — owns wishlist state) ───────────────────────────
+// ─── Featured card ────────────────────────────────────────────────────────────
 
 class _FeaturedCard extends StatefulWidget {
   final CatalogProduct product;
@@ -765,10 +1022,7 @@ class _FeaturedCardState extends State<_FeaturedCard> {
 
   Future<void> _toggleWishlist() async {
     final p = widget.product;
-    if (_wishlist.contains(p.id)) {
-      await _wishlist.remove(p.id);
-      return;
-    }
+    if (_wishlist.contains(p.id)) { await _wishlist.remove(p.id); return; }
     final attrs = p.availableAttrs;
     if (attrs.isEmpty) {
       await _wishlist.add(WishlistItem(product: p));
@@ -785,188 +1039,133 @@ class _FeaturedCardState extends State<_FeaturedCard> {
   Widget build(BuildContext context) {
     final p = widget.product;
     final attrs = p.availableAttrs;
-
     return ListenableBuilder(
       listenable: _wishlist,
       builder: (context, _) {
         final inWishlist = _wishlist.contains(p.id);
-        return _buildCard(context, p, attrs, inWishlist);
+        return GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: _kCard,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AspectRatio(
+                  aspectRatio: 1.0,
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                        child: p.imageUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: p.imageUrl,
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.topCenter,
+                                memCacheWidth: 400,
+                                memCacheHeight: 400,
+                                placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
+                                errorWidget: (_, __, ___) => _imgPlaceholder(),
+                              )
+                            : _imgPlaceholder(),
+                      ),
+                      if (p.hasDiscount)
+                        Positioned(
+                          top: 8, left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(color: const Color(0xFFE53935), borderRadius: BorderRadius.circular(6)),
+                            child: Text('-${p.discount}%', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                          ),
+                        ),
+                      Positioned(
+                        top: 6, right: 6,
+                        child: GestureDetector(
+                          onTap: _toggleWishlist,
+                          behavior: HitTestBehavior.opaque,
+                          child: Container(
+                            width: 32, height: 32,
+                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), shape: BoxShape.circle, boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 4)]),
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 220),
+                              child: Icon(inWishlist ? Icons.favorite : Icons.favorite_border, key: ValueKey(inWishlist), size: 16, color: inWishlist ? const Color(0xFFE53935) : _kSub),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (p.imageUrl.isNotEmpty)
+                        Positioned(
+                          bottom: 8, right: 8,
+                          child: GestureDetector(
+                            onTap: () => FullScreenImagePage.show(context, [p.imageUrl]),
+                            child: Container(
+                              width: 28, height: 28,
+                              decoration: BoxDecoration(color: Colors.black.withOpacity(0.45), borderRadius: BorderRadius.circular(6)),
+                              child: const Icon(Icons.fullscreen, color: Colors.white, size: 16),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kPrimary)),
+                      const SizedBox(height: 4),
+                      if (p.hasDiscount) ...[
+                        Text('₡${fmtPrice(p.price)}', style: const TextStyle(fontSize: 10, color: _kSub, decoration: TextDecoration.lineThrough)),
+                        Text('₡${fmtPrice(p.finalPrice)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFE53935))),
+                      ] else
+                        Text('₡${fmtPrice(p.price)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent)),
+                      if (attrs.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () async {
+                            final picked = await _showSelectableAttrsSheet(context, p.attrGroups);
+                            if (picked == null) return;
+                            if (_wishlist.contains(p.id)) await _wishlist.remove(p.id);
+                            await _wishlist.add(WishlistItem(product: p, variantLabel: picked));
+                          },
+                          behavior: HitTestBehavior.opaque,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: _kAccent.withOpacity(0.08), borderRadius: BorderRadius.circular(8), border: Border.all(color: _kAccent.withOpacity(0.3))),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.style_outlined, size: 11, color: _kAccent),
+                                SizedBox(width: 4),
+                                Text('Ver atributos', style: TextStyle(fontSize: 10, color: _kAccent, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       },
     );
   }
 
-  Widget _buildCard(BuildContext context, dynamic p, List<String> attrs, bool inWishlist) {
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: _kCard,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: const [
-            BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2)),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AspectRatio(
-              aspectRatio: 1.0,
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                    child: p.imageUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: p.imageUrl,
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.cover,
-                            alignment: Alignment.topCenter,
-                            memCacheWidth: 400,
-                            memCacheHeight: 400,
-                            placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
-                            errorWidget: (_, __, ___) => _imgPlaceholder(),
-                          )
-                        : _imgPlaceholder(),
-                  ),
-                  if (p.hasDiscount)
-                    Positioned(
-                      top: 8, left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE53935),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text('-${p.discount}%',
-                            style: const TextStyle(
-                              color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700,
-                            )),
-                      ),
-                    ),
-                  Positioned(
-                    top: 6, right: 6,
-                    child: GestureDetector(
-                      onTap: _toggleWishlist,
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        width: 32, height: 32,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          shape: BoxShape.circle,
-                          boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 4)],
-                        ),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          child: Icon(
-                            inWishlist ? Icons.favorite : Icons.favorite_border,
-                            key: ValueKey(inWishlist),
-                            size: 16,
-                            color: inWishlist ? const Color(0xFFE53935) : _kSub,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (p.imageUrl.isNotEmpty)
-                    Positioned(
-                      bottom: 8, right: 8,
-                      child: GestureDetector(
-                        onTap: () => FullScreenImagePage.show(context, [p.imageUrl]),
-                        child: Container(
-                          width: 28, height: 28,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.45),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Icon(Icons.fullscreen, color: Colors.white, size: 16),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(p.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600, color: _kPrimary)),
-                  const SizedBox(height: 4),
-                  if (p.hasDiscount) ...[
-                    Text('₡${fmtPrice(p.price)}',
-                        style: const TextStyle(
-                            fontSize: 10, color: _kSub, decoration: TextDecoration.lineThrough)),
-                    Text('₡${fmtPrice(p.finalPrice)}',
-                        style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFE53935))),
-                  ] else
-                    Text('₡${fmtPrice(p.price)}',
-                        style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent)),
-                  if (attrs.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    GestureDetector(
-                      onTap: () async {
-                        final picked = await _showSelectableAttrsSheet(context, p.attrGroups);
-                        if (picked == null) return;
-                        if (_wishlist.contains(p.id)) await _wishlist.remove(p.id);
-                        await _wishlist.add(WishlistItem(product: p, variantLabel: picked));
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _kAccent.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: _kAccent.withOpacity(0.3)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.style_outlined, size: 11, color: _kAccent),
-                            SizedBox(width: 4),
-                            Text('Ver atributos',
-                                style: TextStyle(fontSize: 10, color: _kAccent, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _imgPlaceholder() => Container(
-        color: const Color(0xFFF5F5F5),
-        child: const Center(child: Icon(Icons.image_outlined, size: 36, color: Color(0xFFBDBDBD))),
-      );
+    color: const Color(0xFFF5F5F5),
+    child: const Center(child: Icon(Icons.image_outlined, size: 36, color: Color(0xFFBDBDBD))),
+  );
 }
-
-// ─── Small attr chip ──────────────────────────────────────────────────────────
-
-/* class _AttrChip extends StatelessWidget {
-  final String label;
-  const _AttrChip({required this.label});
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5F0EB), borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(label,
-            style: const TextStyle(fontSize: 10, color: _kAccent, fontWeight: FontWeight.w500)),
-      );
-} */
 
 // ─── Contact chip (footer) ────────────────────────────────────────────────────
 
@@ -979,48 +1178,37 @@ class _ContactChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withOpacity(0.25)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 16),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(label,
-                    style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
-                    overflow: TextOverflow.ellipsis),
-              ),
-            ],
-          ),
-        ),
-      );
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(10), border: Border.all(color: color.withOpacity(0.25))),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 6),
+          Flexible(child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+        ],
+      ),
+    ),
+  );
 }
 
-// ─── Shared variant picker bottom sheet ───────────────────────────────────────
+// ─── Variant pickers ──────────────────────────────────────────────────────────
 
 Future<String?> _showVariantPicker(BuildContext context, List<String> attrs) {
   return showModalBottomSheet<String>(
     context: context,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (_) => _VariantPickerSheet(attrs: attrs),
   );
 }
 
-Future<String?> _showSelectableAttrsSheet(
-    BuildContext context, Map<String, List<String>> attrGroups) {
+Future<String?> _showSelectableAttrsSheet(BuildContext context, Map<String, List<String>> attrGroups) {
   return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (_) => _SelectableAttrsSheet(attrGroups: attrGroups),
   );
 }
@@ -1051,16 +1239,9 @@ class _SelectableAttrsSheetState extends State<_SelectableAttrsSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                  color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
-            ),
-          ),
+          Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
           const SizedBox(height: 16),
-          const Text('Atributos disponibles',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+          const Text('Atributos disponibles', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
           const SizedBox(height: 14),
           Flexible(
             child: SingleChildScrollView(
@@ -1071,36 +1252,18 @@ class _SelectableAttrsSheetState extends State<_SelectableAttrsSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(e.key,
-                          style: const TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w600, color: _kSub)),
+                      Text(e.key, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kSub)),
                       const SizedBox(height: 6),
                       Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
+                        spacing: 6, runSpacing: 6,
                         children: e.value.map((v) {
                           final isSel = _selected[e.key] == v;
                           return GestureDetector(
-                            onTap: () => setState(() {
-                              if (isSel) {
-                                _selected.remove(e.key);
-                              } else {
-                                _selected[e.key] = v;
-                              }
-                            }),
+                            onTap: () => setState(() { if (isSel) _selected.remove(e.key); else _selected[e.key] = v; }),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: isSel ? _kAccent : const Color(0xFFF5F0EB),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                    color: _kAccent.withOpacity(isSel ? 1.0 : 0.3)),
-                              ),
-                              child: Text(v,
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      color: isSel ? Colors.white : _kAccent,
-                                      fontWeight: FontWeight.w600)),
+                              decoration: BoxDecoration(color: isSel ? _kAccent : const Color(0xFFF5F0EB), borderRadius: BorderRadius.circular(10), border: Border.all(color: _kAccent.withOpacity(isSel ? 1.0 : 0.3))),
+                              child: Text(v, style: TextStyle(fontSize: 13, color: isSel ? Colors.white : _kAccent, fontWeight: FontWeight.w600)),
                             ),
                           );
                         }).toList(),
@@ -1116,15 +1279,9 @@ class _SelectableAttrsSheetState extends State<_SelectableAttrsSheet> {
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => Navigator.pop(context, _buildLabel()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _kAccent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: _kAccent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               icon: const Icon(Icons.favorite, size: 16),
-              label: const Text('Guardar en favoritos',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              label: const Text('Guardar en favoritos', style: TextStyle(fontWeight: FontWeight.w600)),
             ),
           ),
         ],
@@ -1145,33 +1302,20 @@ class _VariantPickerSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
-            ),
-          ),
+          Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
           const SizedBox(height: 16),
-          const Text('Seleccioná una variante',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+          const Text('Seleccioná una variante', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
           const SizedBox(height: 14),
           Flexible(
             child: SingleChildScrollView(
               child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 8, runSpacing: 8,
                 children: attrs.map((a) => GestureDetector(
                   onTap: () => Navigator.pop(context, a),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F0EB),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _kAccent.withOpacity(0.3)),
-                    ),
-                    child: Text(a,
-                        style: const TextStyle(
-                            fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600)),
+                    decoration: BoxDecoration(color: const Color(0xFFF5F0EB), borderRadius: BorderRadius.circular(10), border: Border.all(color: _kAccent.withOpacity(0.3))),
+                    child: Text(a, style: const TextStyle(fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600)),
                   ),
                 )).toList(),
               ),
@@ -1183,25 +1327,21 @@ class _VariantPickerSheet extends StatelessWidget {
   }
 }
 
-// ─── Loading / error views ────────────────────────────────────────────────────
+// ─── Loading / error ──────────────────────────────────────────────────────────
 
 class _LoadingView extends StatelessWidget {
   const _LoadingView();
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: _kBg,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: _kAccent),
-            SizedBox(height: 16),
-            Text('Cargando catálogo...',
-                style: TextStyle(color: _kSub, fontSize: 13)),
-          ],
-        ),
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(color: _kAccent),
+          SizedBox(height: 16),
+          Text('Cargando...', style: TextStyle(color: _kSub, fontSize: 13)),
+        ],
       ),
     );
   }
@@ -1215,52 +1355,35 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _kBg,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cloud_off_outlined, size: 48, color: _kSub),
-              const SizedBox(height: 16),
-              Text(
-                'No se pudo cargar el catálogo',
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600, color: _kPrimary),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(message,
-                  style: const TextStyle(fontSize: 12, color: _kSub),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: onRetry,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _kAccent,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Reintentar'),
-              ),
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () async {
-                  await TenantSession.clear();
-                  if (context.mounted) {
-                    Navigator.pushReplacementNamed(context, 'tenant/select');
-                  }
-                },
-                icon: const Icon(Icons.swap_horiz_outlined, size: 16, color: _kSub),
-                label: const Text('Cambiar tienda',
-                    style: TextStyle(color: _kSub, fontSize: 13)),
-              ),
-            ],
-          ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, size: 48, color: _kSub),
+            const SizedBox(height: 16),
+            const Text('No se pudo cargar el catálogo',
+                style: TextStyle(fontWeight: FontWeight.w600, color: _kPrimary), textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            Text(message, style: const TextStyle(fontSize: 12, color: _kSub), textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(backgroundColor: _kAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Reintentar'),
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () async {
+                await TenantSession.clear();
+                if (context.mounted) Navigator.pushReplacementNamed(context, 'tenant/select');
+              },
+              icon: const Icon(Icons.swap_horiz_outlined, size: 16, color: _kSub),
+              label: const Text('Cambiar tienda', style: TextStyle(color: _kSub, fontSize: 13)),
+            ),
+          ],
         ),
       ),
     );

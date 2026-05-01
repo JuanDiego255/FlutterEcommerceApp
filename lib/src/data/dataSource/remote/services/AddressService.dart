@@ -12,9 +12,10 @@ class AddressService {
   Map<String, String> get _headers {
     final h = <String, String>{
       'Content-Type': 'application/json',
-      'Authorization': SecureStorageService.authToken,
       'Accept': 'application/json',
     };
+    final token = SecureStorageService.authToken;
+    if (token.isNotEmpty) h['Authorization'] = 'Bearer $token';
     final appToken = TenantSession.appToken;
     if (appToken != null && appToken.isNotEmpty) h['X-App-Token'] = appToken;
     return h;

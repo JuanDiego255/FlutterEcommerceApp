@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/domain/models/TenantConfig.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/bloc/LoginBloc.dart';
@@ -7,7 +6,6 @@ import 'package:ecommerce_flutter/src/presentation/pages/auth/login/bloc/LoginSt
 import 'package:ecommerce_flutter/src/presentation/utils/BlocFormItem.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 const Color _kPrimary = Color(0xFF8B6F47);
@@ -25,12 +23,10 @@ class LoginContent extends StatefulWidget {
 }
 
 class _LoginContentState extends State<LoginContent> {
-  // ─── Server-config step ───────────────────────────────────────────────────
+  // ─── Server-config step (domain only, no token) ───────────────────────────
   late bool _showServerConfig;
   final _serverFormKey = GlobalKey<FormState>();
   late final TextEditingController _domainCtrl;
-  final TextEditingController _tokenCtrl = TextEditingController();
-  bool _tokenVisible = false;
   bool _savingServer = false;
   String? _serverError;
 
@@ -41,18 +37,20 @@ class _LoginContentState extends State<LoginContent> {
   @override
   void initState() {
     super.initState();
-    _showServerConfig = !TenantSession.hasAdminAccess;
+    // Show server config only when the domain hasn't been configured yet.
+    // Regular users skip this step entirely; admins configure the token
+    // separately via the dedicated admin/token route.
+    _showServerConfig = !TenantSession.isConfigured;
     _domainCtrl = TextEditingController(text: TenantSession.host);
   }
 
   @override
   void dispose() {
     _domainCtrl.dispose();
-    _tokenCtrl.dispose();
     super.dispose();
   }
 
-  // ─── Save server config with token validation ─────────────────────────────
+  // ─── Save domain (no token required here) ────────────────────────────────
 
   Future<void> _saveServer() async {
     if (!_serverFormKey.currentState!.validate()) return;
@@ -65,38 +63,11 @@ class _LoginContentState extends State<LoginContent> {
     final domain = raw
         .replaceAll(RegExp(r'^https?://'), '')
         .replaceAll(RegExp(r'/$'), '');
-    final token = _tokenCtrl.text.trim();
 
-    // Validate token against the server before saving anything.
-    try {
-      final response = await http
-          .get(
-            Uri.https(domain, '/api/app/ping'),
-            headers: {'X-App-Token': token, 'Accept': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode != 200) {
-        final body = jsonDecode(response.body);
-        final msg = body['message'] as String? ?? 'Token inválido o servidor incorrecto';
-        setState(() {
-          _savingServer = false;
-          _serverError = msg;
-        });
-        return;
-      }
-    } catch (_) {
-      setState(() {
-        _savingServer = false;
-        _serverError = 'No se pudo conectar al servidor. Verificá el dominio.';
-      });
-      return;
-    }
-
-    // Token validated — persist and proceed to credential step.
+    // Preserve the existing app token (set separately via admin/token flow).
     await TenantSession.save(TenantConfig(
       domain: domain,
-      appToken: token,
+      appToken: TenantSession.appToken,
     ));
 
     if (!mounted) return;
@@ -157,7 +128,7 @@ class _LoginContentState extends State<LoginContent> {
           ),
           const SizedBox(height: 16),
           Text(
-            TenantSession.isConfigured ? TenantSession.host : 'Admin',
+            TenantSession.isConfigured ? TenantSession.host : 'Tienda',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -167,7 +138,7 @@ class _LoginContentState extends State<LoginContent> {
           ),
           const SizedBox(height: 4),
           Text(
-            _showServerConfig ? 'Configurar servidor' : 'Panel de administración',
+            _showServerConfig ? 'Configurar dominio' : 'Iniciá sesión para continuar',
             style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
           ),
         ],
@@ -175,7 +146,7 @@ class _LoginContentState extends State<LoginContent> {
     );
   }
 
-  // ─── Server config card ───────────────────────────────────────────────────
+  // ─── Server config card (domain only) ────────────────────────────────────
 
   Widget _serverConfigCard() {
     return Padding(
@@ -190,7 +161,7 @@ class _LoginContentState extends State<LoginContent> {
                 const Icon(Icons.dns_outlined, size: 18, color: _kPrimary),
                 const SizedBox(width: 8),
                 const Text(
-                  'Conectar servidor',
+                  'Conectar tienda',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
@@ -201,12 +172,11 @@ class _LoginContentState extends State<LoginContent> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Ingresá el dominio y el token de acceso generado desde el panel web.',
+              'Ingresá el dominio de la tienda para continuar.',
               style: TextStyle(fontSize: 13, color: Colors.grey[600]),
             ),
             const SizedBox(height: 24),
 
-            // Domain
             TextFormField(
               controller: _domainCtrl,
               keyboardType: TextInputType.url,
@@ -217,30 +187,8 @@ class _LoginContentState extends State<LoginContent> {
                 return null;
               },
               style: const TextStyle(fontSize: 14),
-              decoration: _inputDecoration('Dominio del tenant', Icons.language_outlined)
+              decoration: _inputDecoration('Dominio de la tienda', Icons.language_outlined)
                   .copyWith(hintText: 'ejemplo.com'),
-            ),
-            const SizedBox(height: 14),
-
-            // App token
-            TextFormField(
-              controller: _tokenCtrl,
-              obscureText: !_tokenVisible,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Ingresá el token de acceso' : null,
-              style: const TextStyle(fontSize: 14),
-              decoration: _inputDecoration('Token de acceso', Icons.vpn_key_outlined).copyWith(
-                hintText: 'Token generado desde el panel web',
-                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 12),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _tokenVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    color: Colors.grey[500],
-                    size: 20,
-                  ),
-                  onPressed: () => setState(() => _tokenVisible = !_tokenVisible),
-                ),
-              ),
             ),
 
             if (_serverError != null) ...[
@@ -288,24 +236,11 @@ class _LoginContentState extends State<LoginContent> {
                       )
                     : const Icon(Icons.link_rounded, size: 18),
                 label: Text(
-                  _savingServer ? 'Verificando...' : 'Conectar',
+                  _savingServer ? 'Guardando...' : 'Continuar',
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
-
-            if (TenantSession.isConfigured) ...[
-              const SizedBox(height: 12),
-              Center(
-                child: TextButton(
-                  onPressed: () => setState(() => _showServerConfig = false),
-                  child: const Text(
-                    'Cancelar',
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  ),
-                ),
-              ),
-            ],
 
             const SizedBox(height: 20),
             _privacyLink(),
@@ -348,7 +283,6 @@ class _LoginContentState extends State<LoginContent> {
                 GestureDetector(
                   onTap: () {
                     _domainCtrl.text = TenantSession.host;
-                    _tokenCtrl.clear();
                     setState(() {
                       _showServerConfig = true;
                       _serverError = null;

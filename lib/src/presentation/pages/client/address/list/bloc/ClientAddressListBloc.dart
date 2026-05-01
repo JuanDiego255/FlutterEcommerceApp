@@ -35,9 +35,12 @@ class ClientAddressListBloc
 
   Future<void> _onGetUserAddress(
       GetUserAddress event, Emitter<ClientAddressListState> emit) async {
-    final AuthResponse? authResponse = await authUseCases.getUserSession.run();
-    if (authResponse == null) return;
     emit(state.copyWith(response: Loading()));
+    final AuthResponse? authResponse = await authUseCases.getUserSession.run();
+    if (authResponse == null) {
+      emit(state.copyWith(response: const Error('Iniciá sesión para continuar')));
+      return;
+    }
     final Resource response =
         await addressUseCases.getUserAddress.run(authResponse.user.id!);
     emit(state.copyWith(response: response));
