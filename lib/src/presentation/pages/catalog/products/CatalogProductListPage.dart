@@ -1,12 +1,16 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ecommerce_flutter/injection.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/CartNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
+import 'package:ecommerce_flutter/src/domain/models/Product.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogNavItem.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProduct.dart';
 import 'package:ecommerce_flutter/src/domain/models/catalog/WishlistItem.dart';
+import 'package:ecommerce_flutter/src/domain/useCases/ShoppingBag/ShoppingBagUseCases.dart';
 import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/products/bloc/CatalogProductsBloc.dart';
@@ -552,6 +556,59 @@ class _ProductCardState extends State<_ProductCard> {
     await _wishlist.add(WishlistItem(product: p, variantLabel: picked));
   }
 
+  Future<void> _addToCart(BuildContext context) async {
+    final p = widget.product;
+    final attrs = p.availableAttrs;
+    String? variantLabel;
+
+    if (attrs.isEmpty) {
+      // No variants — add directly
+    } else if (attrs.length == 1) {
+      variantLabel = attrs.first;
+    } else {
+      // Show variant picker for cart
+      variantLabel = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (_) => _CartVariantSheet(attrGroups: p.attrGroups, defaultVariant: attrs.first),
+      );
+      if (variantLabel == null) return;
+    }
+
+    final cartProduct = Product(
+      id: p.id,
+      name: p.name,
+      description: '',
+      image1: p.imageUrl.isNotEmpty ? p.imageUrl : null,
+      idCategory: 0,
+      price: p.finalPrice,
+      quantity: 1,
+      selectedVariant: variantLabel,
+    );
+    await locator<ShoppingBagUseCases>().add.run(cartProduct);
+    final allProducts = await locator<ShoppingBagUseCases>().getProducts.run();
+    CartNotifier.instance.update(allProducts.length);
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          variantLabel != null
+              ? '${p.name} ($variantLabel) agregado al carrito'
+              : '${p.name} agregado al carrito',
+        ),
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        action: SnackBarAction(label: 'Ver carrito', onPressed: () {
+          Navigator.pushNamed(context, 'client/shopping_bag');
+        }),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = widget.product;
@@ -666,41 +723,33 @@ class _ProductCardState extends State<_ProductCard> {
                   ] else
                     Text('₡${fmtPrice(p.price)}',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent)),
-                  if (p.attrGroups.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    GestureDetector(
-                      onTap: () async {
-                        final picked = await showModalBottomSheet<String>(
-                          context: context,
-                          isScrollControlled: true,
-                          shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-                          builder: (_) => _SelectableAttrsSheet(attrGroups: p.attrGroups),
-                        );
-                        if (picked == null) return;
-                        if (_wishlist.contains(p.id)) await _wishlist.remove(p.id);
-                        await _wishlist.add(WishlistItem(product: p, variantLabel: picked));
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _kAccent.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: _kAccent.withOpacity(0.3)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.style_outlined, size: 11, color: _kAccent),
-                            SizedBox(width: 4),
-                            Text('Ver atributos',
-                                style: TextStyle(fontSize: 10, color: _kAccent, fontWeight: FontWeight.w600)),
-                          ],
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => _addToCart(context),
+                          behavior: HitTestBehavior.opaque,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: _kPrimary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_shopping_cart, size: 12, color: Colors.white),
+                                SizedBox(width: 4),
+                                Text('Agregar',
+                                    style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -816,6 +865,106 @@ class _SelectableAttrsSheetState extends State<_SelectableAttrsSheet> {
               icon: const Icon(Icons.favorite, size: 16),
               label: const Text('Guardar en favoritos',
                   style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Cart variant picker sheet ────────────────────────────────────────────────
+
+class _CartVariantSheet extends StatefulWidget {
+  final Map<String, List<String>> attrGroups;
+  final String defaultVariant;
+  const _CartVariantSheet({required this.attrGroups, required this.defaultVariant});
+  @override
+  State<_CartVariantSheet> createState() => _CartVariantSheetState();
+}
+
+class _CartVariantSheetState extends State<_CartVariantSheet> {
+  final Map<String, String> _selected = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-select first value of each group
+    for (final e in widget.attrGroups.entries) {
+      if (e.value.isNotEmpty) _selected[e.key] = e.value.first;
+    }
+  }
+
+  String _buildLabel() {
+    if (_selected.isEmpty) return widget.defaultVariant;
+    return _selected.entries.map((e) => '${e.key}: ${e.value}').join(' / ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 32 + MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(child: Container(width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
+          const SizedBox(height: 16),
+          const Text('Seleccioná una variante',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+          const SizedBox(height: 14),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: widget.attrGroups.entries.map((e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(e.key, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kSub)),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6, runSpacing: 6,
+                        children: e.value.map((v) {
+                          final isSel = _selected[e.key] == v;
+                          return GestureDetector(
+                            onTap: () => setState(() => _selected[e.key] = v),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSel ? _kAccent : const Color(0xFFF5F0EB),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: _kAccent.withOpacity(isSel ? 1.0 : 0.3)),
+                              ),
+                              child: Text(v, style: TextStyle(
+                                  fontSize: 13,
+                                  color: isSel ? Colors.white : _kAccent,
+                                  fontWeight: FontWeight.w600)),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                )).toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context, _buildLabel()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _kPrimary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.add_shopping_cart, size: 16),
+              label: const Text('Agregar al carrito', style: TextStyle(fontWeight: FontWeight.w600)),
             ),
           ),
         ],

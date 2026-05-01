@@ -1,7 +1,4 @@
-import 'package:ecommerce_flutter/injection.dart';
-import 'package:ecommerce_flutter/src/domain/models/AuthResponse.dart';
 import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
-import 'package:ecommerce_flutter/src/domain/useCases/auth/AuthUseCases.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/bloc/ClientShoppingBagState.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -99,50 +96,8 @@ class ClientShoppingBagBottomBar extends StatelessWidget {
     );
   }
 
-  Future<void> _goToCheckout(BuildContext context) async {
-    // Check if user is logged in
-    final AuthResponse? session =
-        await locator<AuthUseCases>().getUserSession.run();
-
-    if (!context.mounted) return;
-
-    if (session == null) {
-      // Not logged in → show dialog
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Iniciar sesión requerido',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-          content: const Text(
-              'Para continuar con tu pedido, inicia sesión o crea una cuenta.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                Navigator.pushNamed(context, 'register');
-              },
-              child: const Text('Registrarse',
-                  style: TextStyle(color: _kSub)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _kPrimary,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-              onPressed: () {
-                Navigator.pop(ctx);
-                Navigator.pushNamed(context, 'login');
-              },
-              child: const Text('Iniciar sesión'),
-            ),
-          ],
-        ),
-      );
-    } else {
-      Navigator.pushNamed(context, 'client/address/list');
-    }
+  void _goToCheckout(BuildContext context) {
+    Navigator.pushNamed(context, 'checkout/guest');
   }
 
   Future<void> _shareWhatsApp(BuildContext context) async {

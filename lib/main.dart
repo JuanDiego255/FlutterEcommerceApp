@@ -30,6 +30,7 @@ import 'package:ecommerce_flutter/src/presentation/pages/client/payment/status/C
 import 'package:ecommerce_flutter/src/presentation/pages/client/product/detail/ClientProductDetailPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/product/list/ClientProductListPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/profile/info/ProfileInfoPage.dart';
+import 'package:ecommerce_flutter/src/presentation/pages/checkout/GuestCheckoutPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/legal/LegalPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/profile/update/ProfileUpdatePage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/roles/RolesPage.dart';
@@ -115,6 +116,7 @@ class _MyAppState extends State<MyApp> {
           'client/payment/status': (BuildContext context) => ClientPaymentStatusPage(),          
           'admin/order/detail': (BuildContext context) => AdminOrderDetailPage(),          
           'client/order/detail': (BuildContext context) => ClientOrderDetailPage(),
+          'checkout/guest': (BuildContext context) => const GuestCheckoutPage(),
           'legal': (BuildContext context) => const LegalPage(),
         },
       ),

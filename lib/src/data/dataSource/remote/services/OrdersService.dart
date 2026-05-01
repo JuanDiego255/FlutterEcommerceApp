@@ -65,6 +65,51 @@ class OrdersService {
     }
   }
 
+  Future<Resource<Order>> guestOrder({
+    required String name,
+    required String email,
+    required String telephone,
+    required String country,
+    required String province,
+    required String city,
+    required String addressTwo,
+    required String address,
+    required String postalCode,
+    required List<Product> products,
+  }) async {
+    try {
+      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/orders/guest');
+      final body = {
+        'name': name,
+        'email': email,
+        'telephone': telephone,
+        'country': country,
+        'province': province,
+        'city': city,
+        'address_two': addressTwo,
+        'address': address,
+        'postal_code': postalCode,
+        'items': products.map((p) => {
+          'product_id': p.id,
+          'quantity': p.quantity ?? 1,
+          'price': p.effectivePrice,
+        }).toList(),
+      };
+      final response = await http.post(
+        url,
+        headers: _headers,
+        body: json.encode(body),
+      );
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return Success(Order.fromJson(data));
+      }
+      return Error(listToString(data['message']));
+    } catch (e) {
+      return Error(e.toString());
+    }
+  }
+
   Future<Resource<Order>> createOrder(Address address, List<Product> products) async {
     try {
       final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/client/orders');

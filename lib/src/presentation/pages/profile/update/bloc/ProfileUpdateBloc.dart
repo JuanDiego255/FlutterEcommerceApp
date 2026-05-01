@@ -40,7 +40,8 @@ class ProfileUpdateBloc extends Bloc<ProfileUpdateEvent, ProfileUpdateState> {
   }
 
   Future<void> _onUpdateUserSession(ProfileUpdateUpdateUserSession event, Emitter<ProfileUpdateState> emit) async {
-    AuthResponse authResponse = await authUseCases.getUserSession.run(); // USUARIO SESION
+    final AuthResponse? authResponse = await authUseCases.getUserSession.run();
+    if (authResponse == null) return;
     authResponse.user.name = event.user.name;
     authResponse.user.lastname = event.user.lastname;
     authResponse.user.phone = event.user.phone;

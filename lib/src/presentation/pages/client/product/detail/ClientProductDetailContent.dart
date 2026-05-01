@@ -6,7 +6,6 @@ import 'package:ecommerce_flutter/src/presentation/widgets/DefaultButton.dart';
 import 'package:ecommerce_flutter/src/presentation/widgets/DefaultIconBack.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_slideshow/flutter_image_slideshow.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 
 class ClientProductDetailContent extends StatelessWidget {
 
@@ -108,10 +107,18 @@ class ClientProductDetailContent extends StatelessWidget {
           Container(
             width: 150,
             child: DefaultButton(
-              text: 'AGREGAR', 
-              onPressed: () {  
-                Fluttertoast.showToast(msg: 'Se agrego el producto', toastLength: Toast.LENGTH_LONG);
+              text: 'AGREGAR',
+              onPressed: () {
                 bloc?.add(AddProductToShoppingBag(product: product!));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${product!.name} agregado al carrito'),
+                    duration: const Duration(seconds: 5),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    action: SnackBarAction(label: 'OK', onPressed: () {}),
+                  ),
+                );
               }
             ),
           )

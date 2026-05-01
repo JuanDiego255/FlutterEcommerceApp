@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_flutter/injection.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/CartNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
+import 'package:ecommerce_flutter/src/domain/models/Product.dart';
+import 'package:ecommerce_flutter/src/domain/useCases/ShoppingBag/ShoppingBagUseCases.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/CatalogService.dart';
@@ -116,41 +118,65 @@ class _CatalogShellState extends State<_CatalogShell> {
   }
 
   Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 12, offset: const Offset(0, -2)),
-        ],
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _navIndex,
-        onTap: _onNavTap,
-        backgroundColor: Colors.white,
-        selectedItemColor: _kAccent,
-        unselectedItemColor: const Color(0xFF9E9E9E),
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-        unselectedLabelStyle: const TextStyle(fontSize: 11),
-        elevation: 0,
-        type: BottomNavigationBarType.fixed,
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Inicio',
+    return BlocBuilder<CatalogHomeBloc, CatalogHomeState>(
+      buildWhen: (prev, curr) => curr is CatalogHomeLoaded || curr is CatalogHomeInitial,
+      builder: (context, catalogState) {
+        final navLabel = (catalogState is CatalogHomeLoaded &&
+                catalogState.data.navType == 'departments')
+            ? 'Departamentos'
+            : 'Categorías';
+        final navIcon = (catalogState is CatalogHomeLoaded &&
+                catalogState.data.navType == 'departments')
+            ? Icons.store_outlined
+            : Icons.category_outlined;
+        final navIconActive = (catalogState is CatalogHomeLoaded &&
+                catalogState.data.navType == 'departments')
+            ? Icons.store
+            : Icons.category;
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.07),
+                  blurRadius: 12,
+                  offset: const Offset(0, -2)),
+            ],
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.category_outlined),
-            activeIcon: Icon(Icons.category),
-            label: 'Categorías',
+          child: BottomNavigationBar(
+            currentIndex: _navIndex,
+            onTap: _onNavTap,
+            backgroundColor: Colors.white,
+            selectedItemColor: _kAccent,
+            unselectedItemColor: const Color(0xFF9E9E9E),
+            selectedLabelStyle:
+                const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
+            unselectedLabelStyle: const TextStyle(fontSize: 11),
+            elevation: 0,
+            type: BottomNavigationBarType.fixed,
+            items: [
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home),
+                label: 'Inicio',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(navIcon),
+                activeIcon: Icon(navIconActive),
+                label: navLabel,
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(_isLoggedIn
+                    ? Icons.receipt_long_outlined
+                    : Icons.person_outline),
+                activeIcon:
+                    Icon(_isLoggedIn ? Icons.receipt_long : Icons.person),
+                label: _isLoggedIn ? 'Mis pedidos' : 'Mi cuenta',
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(_isLoggedIn ? Icons.receipt_long_outlined : Icons.person_outline),
-            activeIcon: Icon(_isLoggedIn ? Icons.receipt_long : Icons.person),
-            label: _isLoggedIn ? 'Mis pedidos' : 'Mi cuenta',
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -219,7 +245,8 @@ class _CategoriesView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = data.navItems;
-    final label = data.navType == 'departments' ? 'Departamentos' : 'Categorías';
+    final isDept = data.navType == 'departments';
+    final label = isDept ? 'Departamentos' : 'Categorías';
 
     return CustomScrollView(
       slivers: [
@@ -251,7 +278,7 @@ class _CategoriesView extends StatelessWidget {
                 childAspectRatio: 0.9,
               ),
               delegate: SliverChildBuilderDelegate(
-                (_, i) => _CategoryGridCard(item: items[i]),
+                (_, i) => _CategoryGridCard(item: items[i], isDept: isDept),
                 childCount: items.length,
               ),
             ),
@@ -263,8 +290,9 @@ class _CategoriesView extends StatelessWidget {
 
 class _CategoryGridCard extends StatelessWidget {
   final CatalogNavItem item;
+  final bool isDept;
 
-  const _CategoryGridCard({required this.item});
+  const _CategoryGridCard({required this.item, required this.isDept});
 
   @override
   Widget build(BuildContext context) {
@@ -272,7 +300,7 @@ class _CategoryGridCard extends StatelessWidget {
       onTap: () => Navigator.pushNamed(
         context,
         'catalog/products',
-        arguments: {'item': item, 'is_department': false},
+        arguments: {'item': item, 'is_department': isDept},
       ),
       child: Container(
         decoration: BoxDecoration(
@@ -1021,6 +1049,50 @@ class _FeaturedCard extends StatefulWidget {
 class _FeaturedCardState extends State<_FeaturedCard> {
   final _wishlist = WishlistNotifier.instance;
 
+  Future<void> _addToCart(BuildContext context) async {
+    final p = widget.product;
+    final attrs = p.availableAttrs;
+    String? variantLabel;
+
+    if (attrs.isEmpty) {
+      // no variants
+    } else if (attrs.length == 1) {
+      variantLabel = attrs.first;
+    } else {
+      variantLabel = await _showCartVariantSheet(context, p.attrGroups, attrs.first);
+      if (variantLabel == null) return;
+    }
+
+    final cartProduct = Product(
+      id: p.id,
+      name: p.name,
+      description: '',
+      image1: p.imageUrl.isNotEmpty ? p.imageUrl : null,
+      idCategory: 0,
+      price: p.finalPrice,
+      quantity: 1,
+      selectedVariant: variantLabel,
+    );
+    await locator<ShoppingBagUseCases>().add.run(cartProduct);
+    final allProducts = await locator<ShoppingBagUseCases>().getProducts.run();
+    CartNotifier.instance.update(allProducts.length);
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(variantLabel != null
+            ? '${p.name} ($variantLabel) agregado al carrito'
+            : '${p.name} agregado al carrito'),
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        action: SnackBarAction(label: 'Ver carrito', onPressed: () {
+          Navigator.pushNamed(context, 'client/shopping_bag');
+        }),
+      ),
+    );
+  }
+
   Future<void> _toggleWishlist() async {
     final p = widget.product;
     if (_wishlist.contains(p.id)) { await _wishlist.remove(p.id); return; }
@@ -1127,30 +1199,24 @@ class _FeaturedCardState extends State<_FeaturedCard> {
                         Text('₡${fmtPrice(p.finalPrice)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFE53935))),
                       ] else
                         Text('₡${fmtPrice(p.price)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent)),
-                      if (attrs.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        GestureDetector(
-                          onTap: () async {
-                            final picked = await _showSelectableAttrsSheet(context, p.attrGroups);
-                            if (picked == null) return;
-                            if (_wishlist.contains(p.id)) await _wishlist.remove(p.id);
-                            await _wishlist.add(WishlistItem(product: p, variantLabel: picked));
-                          },
-                          behavior: HitTestBehavior.opaque,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: _kAccent.withOpacity(0.08), borderRadius: BorderRadius.circular(8), border: Border.all(color: _kAccent.withOpacity(0.3))),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.style_outlined, size: 11, color: _kAccent),
-                                SizedBox(width: 4),
-                                Text('Ver atributos', style: TextStyle(fontSize: 10, color: _kAccent, fontWeight: FontWeight.w600)),
-                              ],
-                            ),
+                      const SizedBox(height: 6),
+                      GestureDetector(
+                        onTap: () => _addToCart(context),
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                          decoration: BoxDecoration(color: _kPrimary, borderRadius: BorderRadius.circular(8)),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_shopping_cart, size: 12, color: Colors.white),
+                              SizedBox(width: 4),
+                              Text('Agregar', style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
@@ -1196,6 +1262,110 @@ class _ContactChip extends StatelessWidget {
 }
 
 // ─── Variant pickers ──────────────────────────────────────────────────────────
+
+Future<String?> _showCartVariantSheet(BuildContext context, Map<String, List<String>> attrGroups, String defaultVariant) {
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (_) => _CartVariantPickerSheet(attrGroups: attrGroups, defaultVariant: defaultVariant),
+  );
+}
+
+class _CartVariantPickerSheet extends StatefulWidget {
+  final Map<String, List<String>> attrGroups;
+  final String defaultVariant;
+  const _CartVariantPickerSheet({required this.attrGroups, required this.defaultVariant});
+  @override
+  State<_CartVariantPickerSheet> createState() => _CartVariantPickerSheetState();
+}
+
+class _CartVariantPickerSheetState extends State<_CartVariantPickerSheet> {
+  final Map<String, String> _selected = {};
+
+  @override
+  void initState() {
+    super.initState();
+    for (final e in widget.attrGroups.entries) {
+      if (e.value.isNotEmpty) _selected[e.key] = e.value.first;
+    }
+  }
+
+  String _buildLabel() {
+    if (_selected.isEmpty) return widget.defaultVariant;
+    return _selected.entries.map((e) => '${e.key}: ${e.value}').join(' / ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 32 + MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(child: Container(width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
+          const SizedBox(height: 16),
+          const Text('Seleccioná una variante',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+          const SizedBox(height: 14),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: widget.attrGroups.entries.map((e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(e.key, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kSub)),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6, runSpacing: 6,
+                        children: e.value.map((v) {
+                          final isSel = _selected[e.key] == v;
+                          return GestureDetector(
+                            onTap: () => setState(() => _selected[e.key] = v),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSel ? _kAccent : const Color(0xFFF5F0EB),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: _kAccent.withOpacity(isSel ? 1.0 : 0.3)),
+                              ),
+                              child: Text(v, style: TextStyle(
+                                  fontSize: 13, color: isSel ? Colors.white : _kAccent, fontWeight: FontWeight.w600)),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                )).toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context, _buildLabel()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _kPrimary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.add_shopping_cart, size: 16),
+              label: const Text('Agregar al carrito', style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 Future<String?> _showVariantPicker(BuildContext context, List<String> attrs) {
   return showModalBottomSheet<String>(

@@ -1,8 +1,9 @@
+import 'package:ecommerce_flutter/injection.dart';
 import 'package:ecommerce_flutter/src/domain/models/AuthResponse.dart';
+import 'package:ecommerce_flutter/src/domain/useCases/auth/AuthUseCases.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/bloc/LoginBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/LoginContent.dart';
-import 'package:ecommerce_flutter/src/presentation/pages/auth/login/bloc/LoginEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/bloc/LoginState.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -45,9 +46,12 @@ class _LoginPageState extends State<LoginPage> {
               );
             }
             else if (responseState is Success) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
                 final authResponse = responseState.data as AuthResponse;
-                _bloc?.add(LoginSaveUserSession(authResponse: authResponse));
+                // Save session before navigating to avoid race condition where
+                // the next page reads SharedPrefs before the Bloc event runs.
+                await locator<AuthUseCases>().saveUserSession.run(authResponse);
+                if (!context.mounted) return;
                 final roles = authResponse.user.roles ?? [];
                 final String nextRoute;
                 if (roles.length == 1) {
