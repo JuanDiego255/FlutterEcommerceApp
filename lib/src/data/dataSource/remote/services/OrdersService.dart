@@ -23,6 +23,34 @@ class OrdersService {
     return h;
   }
 
+  Future<Resource<List<Order>>> getOrders() async {
+    try {
+      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/admin/orders');
+      final response = await http.get(url, headers: _headers);
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return Success(Order.fromJsonList(data));
+      }
+      return Error(listToString(data['message']));
+    } catch (e) {
+      return Error(e.toString());
+    }
+  }
+
+  Future<Resource<Order>> updateStatus(int id) async {
+    try {
+      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/admin/orders/$id/approve');
+      final response = await http.put(url, headers: _headers);
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return Success(Order.fromJson(data));
+      }
+      return Error(listToString(data['message']));
+    } catch (e) {
+      return Error(e.toString());
+    }
+  }
+
   Future<Resource<List<Order>>> getOrdersByClient(int idClient) async {
     try {
       final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/client/orders');
