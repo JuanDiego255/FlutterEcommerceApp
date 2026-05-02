@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:ecommerce_flutter/injection.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/CartNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/OrdersService.dart';
@@ -8,6 +10,7 @@ import 'package:ecommerce_flutter/src/domain/useCases/ShoppingBag/ShoppingBagUse
 import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 const _kAccent  = Color(0xFF8B6F47);
 const _kPrimary = Color(0xFF2D2D2D);
@@ -39,6 +42,7 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
   double _total = 0;
   bool _loading = false;
   bool _submitting = false;
+  XFile? _proofImage;
 
   @override
   void initState() {
@@ -101,6 +105,7 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
       address:     _addressCtrl.text.trim(),
       postalCode:  _postalCtrl.text.trim(),
       products:    _products,
+      proofImage:  _proofImage,
     );
     setState(() => _submitting = false);
 
@@ -162,6 +167,12 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
     } else if (result is Error) {
       _showError((result as Error).message);
     }
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (picked != null) setState(() => _proofImage = picked);
   }
 
   void _showError(String msg) {
@@ -241,7 +252,9 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
             _sectionTitle('Resumen del pedido'),
             const SizedBox(height: 12),
             _buildOrderSummary(),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
+            _sectionTitle('Comprobante de pago'),
+            const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -256,13 +269,15 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Realizá una transferencia bancaria o SINPE Móvil y enviá el comprobante por WhatsApp al número de la tienda.',
+                      'Realizá una transferencia bancaria o SINPE Móvil y adjuntá el comprobante aquí (opcional).',
                       style: TextStyle(fontSize: 12, color: _kAccent),
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 12),
+            _buildProofUpload(),
           ],
         ),
       ),
@@ -370,6 +385,60 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildProofUpload() {
+    return GestureDetector(
+      onTap: _pickImage,
+      child: Container(
+        width: double.infinity,
+        height: _proofImage == null ? 100 : null,
+        decoration: BoxDecoration(
+          color: _kCard,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: _proofImage != null ? _kAccent : _kDivider,
+            width: _proofImage != null ? 1.5 : 1,
+          ),
+        ),
+        child: _proofImage == null
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.upload_file_outlined, size: 28, color: Colors.grey[400]),
+                  const SizedBox(height: 6),
+                  Text('Toca para adjuntar comprobante',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                ],
+              )
+            : Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(9),
+                    child: Image.file(
+                      File(_proofImage!.path),
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    top: 6, right: 6,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _proofImage = null),
+                      child: Container(
+                        width: 28, height: 28,
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, size: 16, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

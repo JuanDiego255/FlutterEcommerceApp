@@ -13,12 +13,7 @@ class UsersRepositoryImpl implements UsersRepository {
 
   @override
   Future<Resource<User>> update(int id, User user, File? image) {
-    if (image == null) {
-      return usersService.update(id, user);
-    }
-    else {
-      return usersService.updateImage(id, user, image);
-    }
+    return usersService.update(id, user, image);
   }
 
 }

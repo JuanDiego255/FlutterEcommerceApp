@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:ecommerce_flutter/src/data/api/ApiConfig.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
@@ -7,8 +8,6 @@ import 'package:ecommerce_flutter/src/domain/models/User.dart';
 import 'package:ecommerce_flutter/src/domain/utils/ListToString.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
-import 'package:path/path.dart';
 
 class UsersService {
 
@@ -24,47 +23,18 @@ class UsersService {
     return h;
   }
 
-  Future<Resource<User>> update(int id, User user) async {
+  /// Updates the authenticated user's profile.
+  /// [image] is ignored (users table has no image column yet).
+  Future<Resource<User>> update(int id, User user, [File? image]) async {
     try {
-      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/users/$id');
+      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/client/profile');
       final body = json.encode({
-        'name': user.name,
+        'name':     user.name,
         'lastname': user.lastname,
-        'phone': user.phone,
+        'phone':    user.phone,
       });
       final response = await http.put(url, headers: _headers, body: body);
       final data = json.decode(response.body);
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return Success(User.fromJson(data));
-      }
-      return Error(listToString(data['message']));
-    } catch (e) {
-      return Error(e.toString());
-    }
-  }
-
-  Future<Resource<User>> updateImage(int id, User user, File file) async {
-    try {
-      final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/users/upload/$id');
-      final request = http.MultipartRequest('PUT', url);
-      final _t = SecureStorageService.authToken;
-      if (_t.isNotEmpty) request.headers['Authorization'] = 'Bearer $_t';
-      final appToken = TenantSession.appToken;
-      if (appToken != null && appToken.isNotEmpty) request.headers['X-App-Token'] = appToken;
-      request.files.add(http.MultipartFile(
-        'file',
-        http.ByteStream(file.openRead().cast()),
-        await file.length(),
-        filename: basename(file.path),
-        contentType: MediaType('image', 'jpg'),
-      ));
-      request.fields['user'] = json.encode({
-        'name': user.name,
-        'lastname': user.lastname,
-        'phone': user.phone,
-      });
-      final response = await request.send();
-      final data = json.decode(await response.stream.transform(utf8.decoder).first);
       if (response.statusCode == 200 || response.statusCode == 201) {
         return Success(User.fromJson(data));
       }

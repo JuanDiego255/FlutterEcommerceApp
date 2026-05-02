@@ -15,8 +15,8 @@ String orderToJson(List<Order> data) => json.encode(List<dynamic>.from(data.map(
 
 class Order {
     int id;
-    int idClient;
-    int idAddress;
+    int? idClient;
+    int? idAddress;
     String status;
     DateTime createdAt;
     DateTime updatedAt;
@@ -26,8 +26,8 @@ class Order {
 
     Order({
         required this.id,
-        required this.idClient,
-        required this.idAddress,
+        this.idClient,
+        this.idAddress,
         required this.status,
         required this.createdAt,
         required this.updatedAt,
@@ -48,10 +48,10 @@ class Order {
     factory Order.fromJson(Map<String, dynamic> json) {
       print('Order Data: ${json}');
       return Order(
-        id: json["id"],
-        idClient: json["id_user"],
-        idAddress: json["id_address"],
-        status: json["status"],
+        id: json["id"] as int,
+        idClient: json["id_user"] as int?,
+        idAddress: json["id_address"] as int?,
+        status: (json["status"] ?? '').toString(),
         createdAt: DateTime.parse(json["created_at"]),
         updatedAt: DateTime.parse(json["updated_at"]),
         user: json["user"] != null ? User.fromJson(json["user"]) : null,

@@ -1,3 +1,4 @@
+import 'package:ecommerce_flutter/src/data/dataSource/local/CartNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/domain/models/TenantConfig.dart';
 import 'package:flutter/material.dart';
@@ -82,6 +83,7 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
     if (_selected == null || _loading) return;
     setState(() => _loading = true);
     await TenantSession.save(TenantConfig(domain: _selected!.domain));
+    CartNotifier.instance.update(0);
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, 'catalog/home');
   }

@@ -434,6 +434,10 @@ class _AccountTabState extends State<_AccountTab> {
   }
 
   Widget _buildOrdersView(BuildContext context) {
+    final roles = widget.authSession?.user.roles ?? [];
+    final adminIdx = roles.indexWhere((r) => r.route.contains('admin'));
+    final adminRole = adminIdx >= 0 ? roles[adminIdx] : null;
+
     return SafeArea(
       child: Column(
         children: [
@@ -448,6 +452,14 @@ class _AccountTabState extends State<_AccountTab> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _kPrimary),
                 ),
                 const Spacer(),
+                if (adminRole != null)
+                  TextButton.icon(
+                    icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
+                    label: const Text('Panel Admin', style: TextStyle(fontSize: 13)),
+                    style: TextButton.styleFrom(foregroundColor: _kAccent),
+                    onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                        context, adminRole.route, (route) => false),
+                  ),
                 IconButton(
                   icon: const Icon(Icons.refresh_outlined, color: _kAccent),
                   tooltip: 'Actualizar',

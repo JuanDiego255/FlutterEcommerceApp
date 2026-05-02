@@ -28,7 +28,7 @@ class ClientProductDetailContent extends StatelessWidget {
             _textPrice(),
             Spacer(),
             Divider(color: Colors.grey[300], height: 0, thickness: 2),
-            _actionsShoppingBag()
+            _actionsShoppingBag(context)
           ],
         ),
         DefaultIconBack(left: 15, top: 35, color: Colors.black,)
@@ -36,7 +36,7 @@ class ClientProductDetailContent extends StatelessWidget {
     );
   }
 
-  Widget _actionsShoppingBag() {
+  Widget _actionsShoppingBag(BuildContext context) {
     return Container(
       color: Colors.grey[100],
       width: double.infinity,

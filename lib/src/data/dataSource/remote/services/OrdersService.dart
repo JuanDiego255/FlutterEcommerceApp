@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:ecommerce_flutter/src/data/api/ApiConfig.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
@@ -8,6 +9,8 @@ import 'package:ecommerce_flutter/src/domain/models/Product.dart';
 import 'package:ecommerce_flutter/src/domain/utils/ListToString.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart';
 
 class OrdersService {
 
@@ -76,30 +79,65 @@ class OrdersService {
     required String address,
     required String postalCode,
     required List<Product> products,
+    XFile? proofImage,
   }) async {
     try {
       final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/orders/guest');
-      final body = {
-        'name': name,
-        'email': email,
-        'telephone': telephone,
-        'country': country,
-        'province': province,
-        'city': city,
-        'address_two': addressTwo,
-        'address': address,
-        'postal_code': postalCode,
-        'items': products.map((p) => {
-          'product_id': p.id,
-          'quantity': p.quantity ?? 1,
-          'price': p.effectivePrice,
-        }).toList(),
-      };
-      final response = await http.post(
-        url,
-        headers: _headers,
-        body: json.encode(body),
-      );
+      final itemsJson = json.encode(products.map((p) => {
+        'product_id': p.id,
+        'quantity': p.quantity ?? 1,
+        'price': p.effectivePrice,
+      }).toList());
+
+      http.Response response;
+
+      if (proofImage != null) {
+        // Multipart request when a proof image is attached
+        final headers = Map<String, String>.from(_headers)
+          ..remove('Content-Type'); // let http set the multipart boundary
+        final req = http.MultipartRequest('POST', url)
+          ..headers.addAll(headers)
+          ..fields['name']        = name
+          ..fields['email']       = email
+          ..fields['telephone']   = telephone
+          ..fields['country']     = country
+          ..fields['province']    = province
+          ..fields['city']        = city
+          ..fields['address_two'] = addressTwo
+          ..fields['address']     = address
+          ..fields['postal_code'] = postalCode
+          ..fields['items']       = itemsJson;
+
+        final ext = proofImage.path.split('.').last.toLowerCase();
+        final mimeType = ext == 'png' ? 'png' : 'jpeg';
+        req.files.add(await http.MultipartFile.fromPath(
+          'image',
+          proofImage.path,
+          contentType: MediaType('image', mimeType),
+        ));
+        final streamed = await req.send();
+        response = await http.Response.fromStream(streamed);
+      } else {
+        // Regular JSON POST
+        final body = {
+          'name': name,
+          'email': email,
+          'telephone': telephone,
+          'country': country,
+          'province': province,
+          'city': city,
+          'address_two': addressTwo,
+          'address': address,
+          'postal_code': postalCode,
+          'items': products.map((p) => {
+            'product_id': p.id,
+            'quantity': p.quantity ?? 1,
+            'price': p.effectivePrice,
+          }).toList(),
+        };
+        response = await http.post(url, headers: _headers, body: json.encode(body));
+      }
+
       final data = json.decode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
         return Success(Order.fromJson(data));
