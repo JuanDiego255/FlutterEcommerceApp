@@ -58,7 +58,7 @@ class AddressService {
       final url = Uri.https(ApiConfig.API_ECOMMERCE, '/api/client/addresses/$id');
       final response = await http.delete(url, headers: _headers);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return const Success(true);
+        return Success(true);
       }
       final data = json.decode(response.body);
       return Error(listToString(data['message']));

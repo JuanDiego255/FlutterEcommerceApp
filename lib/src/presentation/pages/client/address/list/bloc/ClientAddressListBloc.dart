@@ -38,7 +38,7 @@ class ClientAddressListBloc
     emit(state.copyWith(response: Loading()));
     final AuthResponse? authResponse = await authUseCases.getUserSession.run();
     if (authResponse == null) {
-      emit(state.copyWith(response: const Error('Iniciá sesión para continuar')));
+      emit(state.copyWith(response: Error('Iniciá sesión para continuar')));
       return;
     }
     final Resource response =
@@ -83,14 +83,14 @@ class ClientAddressListBloc
     final Address? address = await addressUseCases.getAddressSession.run();
     if (address == null) {
       emit(state.copyWith(
-          response: const Error('Seleccioná una dirección de entrega')));
+          response: Error('Seleccioná una dirección de entrega')));
       return;
     }
 
     final List<Product> products = await shoppingBagUseCases.getProducts.run();
     if (products.isEmpty) {
       emit(state.copyWith(
-          response: const Error('El carrito está vacío')));
+          response: Error('El carrito está vacío')));
       return;
     }
 

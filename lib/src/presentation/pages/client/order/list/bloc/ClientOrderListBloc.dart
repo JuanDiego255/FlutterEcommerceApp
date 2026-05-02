@@ -19,7 +19,7 @@ class ClientOrderListBloc extends Bloc<ClientOrderListEvent, ClientOrderListStat
     emit(state.copyWith(response: Loading()));
     final AuthResponse? authResponse = await authUseCases.getUserSession.run();
     if (authResponse == null) {
-      emit(state.copyWith(response: const Error('Iniciá sesión para ver tus pedidos')));
+      emit(state.copyWith(response: Error('Iniciá sesión para ver tus pedidos')));
       return;
     }
     final Resource response = await ordersUseCases.getOrdersByClient.run(authResponse.user.id!);
