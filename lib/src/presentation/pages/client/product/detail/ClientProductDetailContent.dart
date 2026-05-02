@@ -113,7 +113,7 @@ class ClientProductDetailContent extends StatelessWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('${product!.name} agregado al carrito'),
-                    duration: const Duration(seconds: 5),
+                    duration: const Duration(seconds: 3),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     action: SnackBarAction(label: 'OK', onPressed: () {}),

@@ -92,6 +92,10 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
       _showError('El carrito está vacío');
       return;
     }
+    if (_proofImage == null) {
+      _showError('Adjuntá el comprobante de pago antes de confirmar');
+      return;
+    }
 
     setState(() => _submitting = true);
     final result = await OrdersService().guestOrder(
@@ -269,7 +273,7 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Realizá una transferencia bancaria o SINPE Móvil y adjuntá el comprobante aquí (opcional).',
+                      'Realizá una transferencia bancaria o SINPE Móvil y adjuntá el comprobante aquí. Requerido para completar el pedido.',
                       style: TextStyle(fontSize: 12, color: _kAccent),
                     ),
                   ),

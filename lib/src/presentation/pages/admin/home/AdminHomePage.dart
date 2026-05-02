@@ -57,7 +57,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, color: Color(0xFF6B6B6B)),
                 onSelected: (value) {
-                  if (value == 'logout') {
+                  if (value == 'catalog') {
+                    Navigator.pushNamedAndRemoveUntil(
+                        context, 'catalog/home', (route) => false);
+                  } else if (value == 'logout') {
                     _bloc?.add(AdminLogout());
                     Navigator.pushAndRemoveUntil(
                       context,
@@ -66,8 +69,19 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     );
                   }
                 },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'catalog',
+                    child: Row(
+                      children: [
+                        Icon(Icons.storefront_outlined, size: 18, color: Color(0xFF8B6F47)),
+                        SizedBox(width: 8),
+                        Text('Ver catálogo público'),
+                      ],
+                    ),
+                  ),
+                  PopupMenuDivider(),
+                  PopupMenuItem(
                     value: 'logout',
                     child: Row(
                       children: [

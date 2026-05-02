@@ -8,18 +8,18 @@ class Address {
     int? id;
     String address;
     String neighborhood;
-    int idUser;
+    int? idUser;
 
     Address({
         this.id,
         required this.address,
         required this.neighborhood,
-        required this.idUser,
+        this.idUser,
     });
 
     static List<Address> fromJsonList(List<dynamic> jsonList) {
       List<Address> toList = [];
-      jsonList.forEach((item) { 
+      jsonList.forEach((item) {
         Address address = Address.fromJson(item);
         toList.add(address);
       });
@@ -27,10 +27,10 @@ class Address {
     }
 
     factory Address.fromJson(Map<String, dynamic> json) => Address(
-        id: json["id"],
-        address: json["address"],
-        neighborhood: json["neighborhood"],
-        idUser: json["id_user"],
+        id: json["id"] as int?,
+        address: (json["address"] ?? '').toString(),
+        neighborhood: (json["neighborhood"] ?? '').toString(),
+        idUser: json["id_user"] as int?,
     );
 
     Map<String, dynamic> toJson() => {

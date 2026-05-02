@@ -12,6 +12,8 @@ import 'package:ecommerce_flutter/src/domain/models/catalog/CatalogProduct.dart'
 import 'package:ecommerce_flutter/src/domain/models/catalog/WishlistItem.dart';
 import 'package:ecommerce_flutter/src/domain/useCases/ShoppingBag/ShoppingBagUseCases.dart';
 import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/remote/services/MitaiApiService.dart';
+import 'package:ecommerce_flutter/src/domain/models/ProductVariant.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/products/bloc/CatalogProductsBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/products/bloc/CatalogProductsEvent.dart';
@@ -560,21 +562,34 @@ class _ProductCardState extends State<_ProductCard> {
     final p = widget.product;
     final attrs = p.availableAttrs;
     String? variantLabel;
+    double? variantPrice;
 
     if (attrs.isEmpty) {
-      // No variants — add directly
-    } else if (attrs.length == 1) {
-      variantLabel = attrs.first;
+      // No variants — use base price
     } else {
-      // Show variant picker for cart
-      variantLabel = await showModalBottomSheet<String>(
-        context: context,
-        isScrollControlled: true,
-        shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-        builder: (_) => _CartVariantSheet(attrGroups: p.attrGroups, defaultVariant: attrs.first),
-      );
-      if (variantLabel == null) return;
+      // Fetch variant prices before showing picker
+      List<ProductVariant> variants = [];
+      final res = await MitaiApiService().getProductVariants(p.id);
+      if (res is Success<List<ProductVariant>>) variants = res.data;
+
+      if (attrs.length == 1 && variants.isEmpty) {
+        variantLabel = attrs.first;
+      } else {
+        variantLabel = await showModalBottomSheet<String>(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          builder: (_) => _CartVariantSheet(attrGroups: p.attrGroups, defaultVariant: attrs.first),
+        );
+        if (variantLabel == null) return;
+      }
+
+      // Look up price for selected variant
+      if (variantLabel != null && variants.isNotEmpty) {
+        final matched = variants.where((v) => v.label == variantLabel).firstOrNull;
+        if (matched != null && matched.price > 0) variantPrice = matched.price;
+      }
     }
 
     final cartProduct = Product(
@@ -586,6 +601,7 @@ class _ProductCardState extends State<_ProductCard> {
       price: p.finalPrice,
       quantity: 1,
       selectedVariant: variantLabel,
+      variantPrice: variantPrice,
     );
     await locator<ShoppingBagUseCases>().add.run(cartProduct);
     final allProducts = await locator<ShoppingBagUseCases>().getProducts.run();
@@ -599,7 +615,7 @@ class _ProductCardState extends State<_ProductCard> {
               ? '${p.name} ($variantLabel) agregado al carrito'
               : '${p.name} agregado al carrito',
         ),
-        duration: const Duration(seconds: 5),
+        duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         action: SnackBarAction(label: 'Ver carrito', onPressed: () {

@@ -166,6 +166,50 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
     if (changed == true) _loadData(reset: true);
   }
 
+  Future<void> _confirmDelete(MitaiProduct product) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Eliminar producto'),
+        content: Text('¿Eliminar "${product.name}"? Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: _kStockOut),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || product.id == null) return;
+
+    final result = await _api.deleteProduct(product.id!);
+    if (!mounted) return;
+    if (result is Success<bool>) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${product.name} eliminado'),
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _loadData(reset: true);
+    } else if (result is Error<bool>) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${(result).message}'),
+          backgroundColor: _kStockOut,
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -370,6 +414,7 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
                     if (changed == true) _loadData(reset: true);
                   },
                   onEdit: () => _openForm(product: product),
+                  onDelete: () => _confirmDelete(product),
                 );
               },
             ),
@@ -387,12 +432,14 @@ class _ProductCard extends StatelessWidget {
   final NumberFormat currencyFormat;
   final VoidCallback onTap;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   const _ProductCard({
     required this.product,
     required this.currencyFormat,
     required this.onTap,
     required this.onEdit,
+    required this.onDelete,
   });
 
   Color _stockColor(int? stock) {
@@ -434,6 +481,22 @@ class _ProductCard extends StatelessWidget {
                             errorWidget: (_, __, ___) => _placeholder(),
                           )
                         : _placeholder(),
+                    // Delete button overlay
+                    Positioned(
+                      top: 4, left: 4,
+                      child: GestureDetector(
+                        onTap: onDelete,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            shape: BoxShape.circle,
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
+                          ),
+                          child: const Icon(Icons.delete_outline, size: 14, color: _kStockOut),
+                        ),
+                      ),
+                    ),
                     // Edit button overlay
                     Positioned(
                       top: 4, right: 4,

@@ -117,12 +117,16 @@ class OrderHasProduct {
     });
 
     factory OrderHasProduct.fromJson(Map<String, dynamic> json) => OrderHasProduct(
-        idOrder: json["id_order"],
-        idProduct: json["id_product"],
-        quantity: json["quantity"],
-        createdAt: DateTime.parse(json["created_at"]),
-        updatedAt: DateTime.parse(json["updated_at"]),
-        product: Product.fromJson(json["product"]),
+        idOrder: (json["id_order"] as num?)?.toInt() ?? 0,
+        idProduct: (json["id_product"] as num?)?.toInt() ?? 0,
+        quantity: (json["quantity"] as num?)?.toInt() ?? 1,
+        createdAt: json["created_at"] != null
+            ? DateTime.tryParse(json["created_at"].toString()) ?? DateTime.now()
+            : DateTime.now(),
+        updatedAt: json["updated_at"] != null
+            ? DateTime.tryParse(json["updated_at"].toString()) ?? DateTime.now()
+            : DateTime.now(),
+        product: Product.fromJson(json["product"] ?? {}),
     );
 
     Map<String, dynamic> toJson() => {

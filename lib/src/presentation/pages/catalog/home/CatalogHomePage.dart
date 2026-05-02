@@ -1,8 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_flutter/injection.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/CartNotifier.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/remote/services/MitaiApiService.dart';
 import 'package:ecommerce_flutter/src/domain/models/Product.dart';
+import 'package:ecommerce_flutter/src/domain/models/ProductVariant.dart';
 import 'package:ecommerce_flutter/src/domain/useCases/ShoppingBag/ShoppingBagUseCases.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistService.dart';
@@ -70,6 +73,7 @@ class _CatalogShellState extends State<_CatalogShell> {
   void initState() {
     super.initState();
     _checkAuth();
+    _reloadCartCount();
   }
 
   @override
@@ -81,6 +85,22 @@ class _CatalogShellState extends State<_CatalogShell> {
   Future<void> _checkAuth() async {
     final session = await locator<AuthUseCases>().getUserSession.run();
     if (mounted) setState(() => _authSession = session);
+  }
+
+  Future<void> _reloadCartCount() async {
+    final products = await locator<ShoppingBagUseCases>().getProducts.run();
+    CartNotifier.instance.update(products.length);
+  }
+
+  Future<void> _logout() async {
+    await locator<AuthUseCases>().logout.run();
+    await SecureStorageService.clearAll();
+    CartNotifier.instance.update(0);
+    if (!mounted) return;
+    setState(() {
+      _authSession = null;
+      _navIndex = 0;
+    });
   }
 
   bool get _isLoggedIn => _authSession != null;
@@ -105,7 +125,7 @@ class _CatalogShellState extends State<_CatalogShell> {
         children: [
           _CatalogTab(searchCtrl: _searchCtrl, authSession: _authSession, onAuthChanged: _checkAuth),
           _CategoriesTab(onAuthChanged: _checkAuth),
-          _AccountTab(authSession: _authSession, onLoginTap: () {
+          _AccountTab(authSession: _authSession, onLogout: _logout, onLoginTap: () {
             Navigator.pushNamed(context, 'login').then((_) {
               _checkAuth();
               setState(() => _navIndex = 2);
@@ -353,8 +373,9 @@ class _CategoryGridCard extends StatelessWidget {
 class _AccountTab extends StatefulWidget {
   final AuthResponse? authSession;
   final VoidCallback onLoginTap;
+  final VoidCallback onLogout;
 
-  const _AccountTab({this.authSession, required this.onLoginTap});
+  const _AccountTab({this.authSession, required this.onLoginTap, required this.onLogout});
 
   @override
   State<_AccountTab> createState() => _AccountTabState();
@@ -452,18 +473,40 @@ class _AccountTabState extends State<_AccountTab> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _kPrimary),
                 ),
                 const Spacer(),
-                if (adminRole != null)
-                  TextButton.icon(
-                    icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
-                    label: const Text('Panel Admin', style: TextStyle(fontSize: 13)),
-                    style: TextButton.styleFrom(foregroundColor: _kAccent),
-                    onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                        context, adminRole.route, (route) => false),
-                  ),
                 IconButton(
                   icon: const Icon(Icons.refresh_outlined, color: _kAccent),
                   tooltip: 'Actualizar',
                   onPressed: () => context.read<ClientOrderListBloc>().add(GetOrders()),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: _kAccent),
+                  onSelected: (value) {
+                    if (value == 'logout') {
+                      widget.onLogout();
+                    } else if (value == 'admin' && adminRole != null) {
+                      Navigator.pushNamedAndRemoveUntil(
+                          context, adminRole.route, (route) => false);
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    if (adminRole != null)
+                      const PopupMenuItem(
+                        value: 'admin',
+                        child: Row(children: [
+                          Icon(Icons.admin_panel_settings_outlined, size: 18, color: _kAccent),
+                          SizedBox(width: 8),
+                          Text('Panel Admin'),
+                        ]),
+                      ),
+                    const PopupMenuItem(
+                      value: 'logout',
+                      child: Row(children: [
+                        Icon(Icons.logout, size: 18, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
+                      ]),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1065,14 +1108,30 @@ class _FeaturedCardState extends State<_FeaturedCard> {
     final p = widget.product;
     final attrs = p.availableAttrs;
     String? variantLabel;
+    double? variantPrice;
 
     if (attrs.isEmpty) {
-      // no variants
-    } else if (attrs.length == 1) {
-      variantLabel = attrs.first;
+      // no variants — use base price
     } else {
-      variantLabel = await _showCartVariantSheet(context, p.attrGroups, attrs.first);
-      if (variantLabel == null) return;
+      // Fetch variant prices from API before showing picker
+      List<ProductVariant> variants = [];
+      if (p.id != 0) {
+        final res = await MitaiApiService().getProductVariants(p.id);
+        if (res is Success<List<ProductVariant>>) variants = res.data;
+      }
+
+      if (attrs.length == 1 && variants.isEmpty) {
+        variantLabel = attrs.first;
+      } else {
+        variantLabel = await _showCartVariantSheet(context, p.attrGroups, attrs.first);
+        if (variantLabel == null) return;
+      }
+
+      // Look up variant price
+      if (variantLabel != null && variants.isNotEmpty) {
+        final matched = variants.where((v) => v.label == variantLabel).firstOrNull;
+        if (matched != null && matched.price > 0) variantPrice = matched.price;
+      }
     }
 
     final cartProduct = Product(
@@ -1084,6 +1143,7 @@ class _FeaturedCardState extends State<_FeaturedCard> {
       price: p.finalPrice,
       quantity: 1,
       selectedVariant: variantLabel,
+      variantPrice: variantPrice,
     );
     await locator<ShoppingBagUseCases>().add.run(cartProduct);
     final allProducts = await locator<ShoppingBagUseCases>().getProducts.run();
@@ -1095,7 +1155,7 @@ class _FeaturedCardState extends State<_FeaturedCard> {
         content: Text(variantLabel != null
             ? '${p.name} ($variantLabel) agregado al carrito'
             : '${p.name} agregado al carrito'),
-        duration: const Duration(seconds: 5),
+        duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         action: SnackBarAction(label: 'Ver carrito', onPressed: () {
