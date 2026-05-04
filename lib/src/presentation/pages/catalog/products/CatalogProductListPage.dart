@@ -563,6 +563,9 @@ class _ProductCardState extends State<_ProductCard> {
     final attrs = p.availableAttrs;
     String? variantLabel;
     double? variantPrice;
+    int? variantStock;
+    int? variantManageStock;
+    int? variantCombinationId;
 
     if (attrs.isEmpty) {
       // No variants — use base price
@@ -585,10 +588,15 @@ class _ProductCardState extends State<_ProductCard> {
         if (variantLabel == null) return;
       }
 
-      // Look up price for selected variant
+      // Look up price, stock and combination id for selected variant
       if (variantLabel != null && variants.isNotEmpty) {
         final matched = variants.where((v) => v.label == variantLabel).firstOrNull;
-        if (matched != null && matched.price > 0) variantPrice = matched.price;
+        if (matched != null) {
+          if (matched.price > 0) variantPrice = matched.price;
+          variantStock = matched.stock;
+          variantManageStock = matched.manageStock;
+          variantCombinationId = matched.combinationId > 0 ? matched.combinationId : null;
+        }
       }
     }
 
@@ -602,6 +610,9 @@ class _ProductCardState extends State<_ProductCard> {
       quantity: 1,
       selectedVariant: variantLabel,
       variantPrice: variantPrice,
+      variantStock: variantStock,
+      variantManageStock: variantManageStock,
+      variantCombinationId: variantCombinationId,
     );
     await locator<ShoppingBagUseCases>().add.run(cartProduct);
     final allProducts = await locator<ShoppingBagUseCases>().getProducts.run();

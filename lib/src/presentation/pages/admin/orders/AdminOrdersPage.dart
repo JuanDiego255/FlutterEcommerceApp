@@ -268,6 +268,21 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
 
   // ─── Quick-view sheets ────────────────────────────────────────────────────
 
+  void _showProofSheet(AdminOrder order) {
+    final url = order.proofUrl;
+    if (url == null || url.isEmpty) {
+      _snack('Este pedido no tiene comprobante adjunto');
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _ProofSheet(orderId: order.id, proofUrl: url),
+    );
+  }
+
   Future<void> _showShippingSheet(AdminOrder order) async {
     final result = await _api.getOrderQuickInfo(order.id);
     if (!mounted) return;
@@ -447,6 +462,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
             onReady: () => _toggleReady(i),
             onCancel: () => _showCancelDialog(i),
             onDelete: () => _confirmDelete(i),
+            onProof: () => _showProofSheet(_orders[i]),
             onShipping: () => _showShippingSheet(_orders[i]),
             onItems: () => _showItemsSheet(_orders[i]),
             onTap: () async {
@@ -476,6 +492,7 @@ class _OrderCard extends StatelessWidget {
   final VoidCallback onReady;
   final VoidCallback onCancel;
   final VoidCallback onDelete;
+  final VoidCallback onProof;
   final VoidCallback onShipping;
   final VoidCallback onItems;
   final VoidCallback onTap;
@@ -489,6 +506,7 @@ class _OrderCard extends StatelessWidget {
     required this.onReady,
     required this.onCancel,
     required this.onDelete,
+    required this.onProof,
     required this.onShipping,
     required this.onItems,
     required this.onTap,
@@ -629,6 +647,14 @@ class _OrderCard extends StatelessWidget {
             tooltip: 'Artículos',
             color: _cVigente,
             onTap: onItems,
+          ),
+          _ActionBtn(
+            icon: Icons.receipt_outlined,
+            tooltip: 'Ver comprobante',
+            color: order.proofUrl != null && order.proofUrl!.isNotEmpty
+                ? _cApartado
+                : _kSub,
+            onTap: onProof,
           ),
           const Spacer(),
           _ActionBtn(
@@ -1057,4 +1083,93 @@ class _ItemRow extends StatelessWidget {
         ),
         child: const Icon(Icons.shopping_bag_outlined, color: _kAccent, size: 24),
       );
+}
+
+// ─── Payment proof bottom sheet ───────────────────────────────────────────────
+
+class _ProofSheet extends StatelessWidget {
+  final int orderId;
+  final String proofUrl;
+  const _ProofSheet({required this.orderId, required this.proofUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          top: 20, left: 20, right: 20),
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36, height: 4,
+            decoration: BoxDecoration(
+                color: const Color(0xFFDDD6CC),
+                borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: _cApartado.withOpacity(0.12), shape: BoxShape.circle),
+                child: Icon(Icons.receipt_outlined, color: _cApartado, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Comprobante de pago',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: _kText)),
+                    Text('Pedido #$orderId',
+                        style: const TextStyle(fontSize: 12, color: _kSub)),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: _kSub),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Flexible(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: CachedNetworkImage(
+                imageUrl: proofUrl,
+                fit: BoxFit.contain,
+                placeholder: (_, __) => const SizedBox(
+                  height: 200,
+                  child: Center(child: CircularProgressIndicator(color: _kPrimary)),
+                ),
+                errorWidget: (_, __, ___) => Container(
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0EBE3),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.broken_image_outlined, size: 40, color: _kSub),
+                        SizedBox(height: 8),
+                        Text('No se pudo cargar la imagen',
+                            style: TextStyle(color: _kSub, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
 }

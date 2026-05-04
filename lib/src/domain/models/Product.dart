@@ -15,10 +15,20 @@ class Product {
     int? quantity;
     String? selectedVariant;
     double? variantPrice;
+    int? variantStock;
+    int? variantManageStock;
+    int? variantCombinationId;
 
     // Effective price: use variant price when set, otherwise base price
     double get effectivePrice =>
         (variantPrice != null && variantPrice! > 0) ? variantPrice! : price;
+
+    // Returns true if quantity is at or beyond the available variant stock
+    bool get isAtStockLimit =>
+        variantManageStock == 1 &&
+        variantStock != null &&
+        variantStock! > 0 &&
+        (quantity ?? 0) >= variantStock!;
 
     Product({
         this.id,
@@ -31,6 +41,9 @@ class Product {
         this.quantity,
         this.selectedVariant,
         this.variantPrice,
+        this.variantStock,
+        this.variantManageStock,
+        this.variantCombinationId,
     });
 
     static List<Product> fromJsonList(List<dynamic> jsonList) {
@@ -63,6 +76,15 @@ class Product {
             : json["variant_price"] is int
                 ? (json["variant_price"] as int).toDouble()
                 : json["variant_price"] as double?,
+        variantStock: json["variant_stock"] is int
+            ? json["variant_stock"] as int
+            : int.tryParse(json["variant_stock"]?.toString() ?? ''),
+        variantManageStock: json["variant_manage_stock"] is int
+            ? json["variant_manage_stock"] as int
+            : int.tryParse(json["variant_manage_stock"]?.toString() ?? ''),
+        variantCombinationId: json["variant_combination_id"] is int
+            ? json["variant_combination_id"] as int
+            : int.tryParse(json["variant_combination_id"]?.toString() ?? ''),
     );
 
     Map<String, dynamic> toJson() => {
@@ -76,5 +98,8 @@ class Product {
         "quantity": quantity,
         "selected_variant": selectedVariant,
         "variant_price": variantPrice,
+        "variant_stock": variantStock,
+        "variant_manage_stock": variantManageStock,
+        "variant_combination_id": variantCombinationId,
     };
 }

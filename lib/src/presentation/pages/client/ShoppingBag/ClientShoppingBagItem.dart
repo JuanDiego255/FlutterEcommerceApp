@@ -109,6 +109,7 @@ class ClientShoppingBagItem extends StatelessWidget {
   }
 
   Widget _buildQtyControls(Product p) {
+    final atLimit = p.isAtStockLimit;
     return Row(
       children: [
         _qtyBtn(
@@ -130,23 +131,29 @@ class ClientShoppingBagItem extends StatelessWidget {
         ),
         _qtyBtn(
           icon: Icons.add,
-          onTap: () => bloc?.add(AddItem(product: p)),
+          onTap: atLimit ? null : () => bloc?.add(AddItem(product: p)),
+          disabled: atLimit,
         ),
+        if (atLimit)
+          const Padding(
+            padding: EdgeInsets.only(left: 6),
+            child: Text('máx', style: TextStyle(fontSize: 10, color: Color(0xFFEF4444))),
+          ),
       ],
     );
   }
 
-  Widget _qtyBtn({required IconData icon, required VoidCallback onTap}) {
+  Widget _qtyBtn({required IconData icon, VoidCallback? onTap, bool disabled = false}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 30,
         height: 30,
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F5F5),
+          color: disabled ? const Color(0xFFEEEEEE) : const Color(0xFFF5F5F5),
           borderRadius: BorderRadius.circular(4),
         ),
-        child: Icon(icon, size: 15, color: _kPrimary),
+        child: Icon(icon, size: 15, color: disabled ? const Color(0xFFBDBDBD) : _kPrimary),
       ),
     );
   }

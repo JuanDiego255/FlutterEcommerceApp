@@ -87,6 +87,8 @@ class OrdersService {
         'product_id': p.id,
         'quantity': p.quantity ?? 1,
         'price': p.effectivePrice,
+        if (p.variantCombinationId != null) 'combination_id': p.variantCombinationId,
+        if (p.selectedVariant != null) 'selected_variant': p.selectedVariant,
       }).toList());
 
       http.Response response;
@@ -133,6 +135,8 @@ class OrdersService {
             'product_id': p.id,
             'quantity': p.quantity ?? 1,
             'price': p.effectivePrice,
+            if (p.variantCombinationId != null) 'combination_id': p.variantCombinationId,
+            if (p.selectedVariant != null) 'selected_variant': p.selectedVariant,
           }).toList(),
         };
         response = await http.post(url, headers: _headers, body: json.encode(body));

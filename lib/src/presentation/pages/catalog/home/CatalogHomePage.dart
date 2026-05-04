@@ -732,7 +732,11 @@ class _ContentViewState extends State<_ContentView> {
             if (value == 'login_client') {
               Navigator.pushNamed(context, 'login').then((_) => widget.onAuthChanged());
             } else if (value == 'admin') {
-              Navigator.pushNamed(context, TenantSession.hasAdminAccess ? 'login' : 'admin/token');
+              if (widget.authSession != null) {
+                Navigator.pushNamedAndRemoveUntil(context, 'admin/home', (route) => false);
+              } else {
+                Navigator.pushNamed(context, TenantSession.hasAdminAccess ? 'login' : 'admin/token');
+              }
             } else if (value == 'change') {
               Navigator.pushReplacementNamed(context, 'tenant/select');
             }
@@ -1109,6 +1113,9 @@ class _FeaturedCardState extends State<_FeaturedCard> {
     final attrs = p.availableAttrs;
     String? variantLabel;
     double? variantPrice;
+    int? variantStock;
+    int? variantManageStock;
+    int? variantCombinationId;
 
     if (attrs.isEmpty) {
       // no variants — use base price
@@ -1127,10 +1134,15 @@ class _FeaturedCardState extends State<_FeaturedCard> {
         if (variantLabel == null) return;
       }
 
-      // Look up variant price
+      // Look up variant price, stock and combination id
       if (variantLabel != null && variants.isNotEmpty) {
         final matched = variants.where((v) => v.label == variantLabel).firstOrNull;
-        if (matched != null && matched.price > 0) variantPrice = matched.price;
+        if (matched != null) {
+          if (matched.price > 0) variantPrice = matched.price;
+          variantStock = matched.stock;
+          variantManageStock = matched.manageStock;
+          variantCombinationId = matched.combinationId > 0 ? matched.combinationId : null;
+        }
       }
     }
 
@@ -1144,6 +1156,9 @@ class _FeaturedCardState extends State<_FeaturedCard> {
       quantity: 1,
       selectedVariant: variantLabel,
       variantPrice: variantPrice,
+      variantStock: variantStock,
+      variantManageStock: variantManageStock,
+      variantCombinationId: variantCombinationId,
     );
     await locator<ShoppingBagUseCases>().add.run(cartProduct);
     final allProducts = await locator<ShoppingBagUseCases>().getProducts.run();

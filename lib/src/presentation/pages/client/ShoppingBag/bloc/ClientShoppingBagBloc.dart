@@ -27,6 +27,10 @@ class ClientShoppingBagBloc extends Bloc<ClientShoppingBagEvent, ClientShoppingB
   }
 
   Future<void> _onAddItem(AddItem event, Emitter<ClientShoppingBagState> emit) async {
+    final p = event.product;
+    if (p.variantManageStock == 1 && p.variantStock != null && p.variantStock! > 0) {
+      if ((p.quantity ?? 0) >= p.variantStock!) return;
+    }
     event.product.quantity = event.product.quantity! + 1;
     await shoppingBagUseCases.add.run(event.product);
     add(GetShoppingBag());

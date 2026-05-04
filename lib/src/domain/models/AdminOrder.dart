@@ -52,6 +52,7 @@ class AdminOrder {
   final String? guideNumber;
   final String? detail;
   final String createdAt;
+  final String? proofUrl;
   // Detail-only shipping fields
   final String? sCountry;
   final String? sProvince;
@@ -78,6 +79,7 @@ class AdminOrder {
     this.guideNumber,
     this.detail,
     required this.createdAt,
+    this.proofUrl,
     this.sCountry,
     this.sProvince,
     this.sCity,
@@ -117,6 +119,7 @@ class AdminOrder {
     String? detail,
     double? montoApartado,
     List<AdminOrderItem>? items,
+    String? proofUrl,
     String? sCountry,
     String? sProvince,
     String? sCity,
@@ -141,6 +144,7 @@ class AdminOrder {
         guideNumber: guideNumber ?? this.guideNumber,
         detail: detail ?? this.detail,
         createdAt: createdAt,
+        proofUrl: proofUrl ?? this.proofUrl,
         sCountry: sCountry ?? this.sCountry,
         sProvince: sProvince ?? this.sProvince,
         sCity: sCity ?? this.sCity,
@@ -167,6 +171,7 @@ class AdminOrder {
         guideNumber: j['guide_number'] as String?,
         detail: j['detail'] as String?,
         createdAt: j['created_at'] ?? '',
+        proofUrl: j['proof_url'] as String?,
         sCountry: j['s_country'] as String?,
         sProvince: j['s_province'] as String?,
         sCity: j['s_city'] as String?,
