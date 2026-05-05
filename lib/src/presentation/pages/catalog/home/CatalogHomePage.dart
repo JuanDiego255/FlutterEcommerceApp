@@ -74,6 +74,14 @@ class _CatalogShellState extends State<_CatalogShell> {
     super.initState();
     _checkAuth();
     _reloadCartCount();
+    // Navigate to a specific tab if passed as route argument (e.g., {'tab': 2} from checkout)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map) {
+        final tab = args['tab'] as int?;
+        if (tab != null && tab != _navIndex) _onNavTap(tab);
+      }
+    });
   }
 
   @override
@@ -695,6 +703,12 @@ class _ContentViewState extends State<_ContentView> {
         ],
       ),
       actions: [
+        // Refresh catalog
+        IconButton(
+          icon: const Icon(Icons.refresh_outlined, color: _kSub, size: 22),
+          tooltip: 'Actualizar catálogo',
+          onPressed: () => context.read<CatalogHomeBloc>().add(CatalogHomeLoad()),
+        ),
         // Cart icon with badge
         ValueListenableBuilder<int>(
           valueListenable: CartNotifier.instance,

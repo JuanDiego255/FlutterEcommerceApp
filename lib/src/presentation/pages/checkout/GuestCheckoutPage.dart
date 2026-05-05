@@ -164,7 +164,12 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
                   ),
                   onPressed: () {
                     Navigator.pop(context); // close dialog
-                    Navigator.popUntil(context, ModalRoute.withName('catalog/home'));
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      'catalog/home',
+                      (route) => false,
+                      arguments: _isLoggedIn ? {'tab': 2} : null,
+                    );
                   },
                   child: Text(_isLoggedIn ? 'Ver mis pedidos' : 'Ir al catálogo'),
                 ),
