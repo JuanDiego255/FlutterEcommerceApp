@@ -1,8 +1,9 @@
+import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/domain/models/Role.dart';
 import 'package:flutter/material.dart';
 
 class RolesItem extends StatelessWidget {
-  
+
   Role role;
   RolesItem(this.role);
 
@@ -10,7 +11,18 @@ class RolesItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamedAndRemoveUntil(context, role.route, (route) => false);
+        final isAdmin = role.route.contains('admin');
+        if (isAdmin && !TenantSession.hasAdminAccess) {
+          // No app token yet — ask for it first, then go straight to admin/home
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            'admin/token',
+            (r) => false,
+            arguments: {'nextRoute': role.route},
+          );
+        } else {
+          Navigator.pushNamedAndRemoveUntil(context, role.route, (route) => false);
+        }
       },
       child: Column(
         children: [

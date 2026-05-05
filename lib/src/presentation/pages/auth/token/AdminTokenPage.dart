@@ -63,7 +63,11 @@ class _AdminTokenPageState extends State<AdminTokenPage> {
     ));
 
     if (!mounted) return;
-    Navigator.pushReplacementNamed(context, 'login');
+    // If a nextRoute was passed (e.g., 'admin/home' from RolesItem), go there directly.
+    // Otherwise fall back to the login screen (original behaviour).
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final nextRoute = (args is Map) ? (args['nextRoute'] as String?) : null;
+    Navigator.pushReplacementNamed(context, nextRoute ?? 'login');
   }
 
   @override

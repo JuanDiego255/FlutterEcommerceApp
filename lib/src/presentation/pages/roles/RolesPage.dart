@@ -28,7 +28,23 @@ class _RolesPageState extends State<RolesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: BlocBuilder<RolesBloc, RolesState>(
+      body: BlocConsumer<RolesBloc, RolesState>(
+        listener: (context, state) {
+          // If the user only has the client role, skip the selection screen
+          // and navigate directly to catalog/home.
+          if (state.roles != null &&
+              state.roles!.length == 1 &&
+              state.roles!.first != null) {
+            final role = state.roles!.first!;
+            if (!role.route.contains('admin')) {
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                role.route,
+                (r) => false,
+              );
+            }
+          }
+        },
         builder: (context, state) {
           return Container(
             width: MediaQuery.of(context).size.width,

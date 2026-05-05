@@ -152,36 +152,24 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
             ],
           ),
           actions: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _kAccent,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context); // close dialog
-                    Navigator.pushNamedAndRemoveUntil(
-                      context,
-                      'catalog/home',
-                      (route) => false,
-                      arguments: _isLoggedIn ? {'tab': 2} : null,
-                    );
-                  },
-                  child: Text(_isLoggedIn ? 'Ver mis pedidos' : 'Ir al catálogo'),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _kAccent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                if (_isLoggedIn) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Ir a la pestaña "Pedidos" para ver el estado de tu compra.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  ),
-                ],
-              ],
+                onPressed: () {
+                  Navigator.pop(context); // close dialog
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    'catalog/home',
+                    (route) => false,
+                  );
+                },
+                child: const Text('Ir al catálogo'),
+              ),
             ),
           ],
         ),
