@@ -741,6 +741,11 @@ class _DetailViewState extends State<_DetailView> {
       quantity: 1,
       selectedVariant: variantLabel,
       variantPrice: vPrice,
+      variantCombinationId: (_selectedVariant != null && _selectedVariant!.combinationId > 0)
+          ? _selectedVariant!.combinationId
+          : null,
+      variantStock: _selectedVariant?.stock,
+      variantManageStock: _selectedVariant?.manageStock,
     );
 
     await locator<ShoppingBagUseCases>().add.run(product);

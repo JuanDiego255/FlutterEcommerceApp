@@ -161,6 +161,8 @@ class OrdersService {
           'product_id': p.id,
           'quantity': p.quantity ?? 1,
           'price': p.effectivePrice,
+          if (p.variantCombinationId != null) 'combination_id': p.variantCombinationId,
+          if (p.selectedVariant != null) 'selected_variant': p.selectedVariant,
         }).toList(),
       };
       final response = await http.post(

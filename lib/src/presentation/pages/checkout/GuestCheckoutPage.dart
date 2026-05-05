@@ -43,6 +43,7 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
   bool _loading = false;
   bool _submitting = false;
   XFile? _proofImage;
+  bool _isLoggedIn = false;
 
   @override
   void initState() {
@@ -79,9 +80,10 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
 
     if (mounted) {
       setState(() {
-        _products = products;
-        _total    = total;
-        _loading  = false;
+        _products   = products;
+        _total      = total;
+        _loading    = false;
+        _isLoggedIn = session != null;
       });
     }
   }
@@ -150,20 +152,31 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
             ],
           ),
           actions: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _kAccent,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _kAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context); // close dialog
+                    Navigator.popUntil(context, ModalRoute.withName('catalog/home'));
+                  },
+                  child: Text(_isLoggedIn ? 'Ver mis pedidos' : 'Ir al catálogo'),
                 ),
-                onPressed: () {
-                  Navigator.pop(context); // close dialog
-                  Navigator.popUntil(context, ModalRoute.withName('catalog/home'));
-                },
-                child: const Text('Ir al catálogo'),
-              ),
+                if (_isLoggedIn) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Ir a la pestaña "Pedidos" para ver el estado de tu compra.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  ),
+                ],
+              ],
             ),
           ],
         ),
