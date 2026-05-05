@@ -26,6 +26,7 @@ import 'package:ecommerce_flutter/src/presentation/pages/client/order/list/Clien
 import 'package:ecommerce_flutter/src/presentation/pages/client/order/list/bloc/ClientOrderListBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/order/list/bloc/ClientOrderListEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/order/list/bloc/ClientOrderListState.dart';
+import 'package:ecommerce_flutter/src/presentation/pages/catalog/wishlist/WishlistPage.dart';
 import 'package:ecommerce_flutter/src/presentation/widgets/FullScreenImagePage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -139,6 +140,7 @@ class _CatalogShellState extends State<_CatalogShell> {
               setState(() => _navIndex = 2);
             });
           }),
+          const WishlistPage(embedded: true),
         ],
       ),
       bottomNavigationBar: _buildBottomNav(),
@@ -200,6 +202,73 @@ class _CatalogShellState extends State<_CatalogShell> {
                 activeIcon:
                     Icon(_isLoggedIn ? Icons.receipt_long : Icons.person),
                 label: _isLoggedIn ? 'Mis pedidos' : 'Mi cuenta',
+              ),
+              BottomNavigationBarItem(
+                icon: AnimatedBuilder(
+                  animation: WishlistNotifier.instance,
+                  builder: (_, __) {
+                    final count = WishlistNotifier.instance.count;
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(Icons.favorite_border),
+                        if (count > 0)
+                          Positioned(
+                            right: -6,
+                            top: -4,
+                            child: Container(
+                              width: 16,
+                              height: 16,
+                              decoration: const BoxDecoration(
+                                  color: _kAccent, shape: BoxShape.circle),
+                              child: Center(
+                                child: Text(
+                                  count > 9 ? '9+' : '$count',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+                activeIcon: AnimatedBuilder(
+                  animation: WishlistNotifier.instance,
+                  builder: (_, __) {
+                    final count = WishlistNotifier.instance.count;
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(Icons.favorite),
+                        if (count > 0)
+                          Positioned(
+                            right: -6,
+                            top: -4,
+                            child: Container(
+                              width: 16,
+                              height: 16,
+                              decoration: const BoxDecoration(
+                                  color: _kAccent, shape: BoxShape.circle),
+                              child: Center(
+                                child: Text(
+                                  count > 9 ? '9+' : '$count',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+                label: 'Favoritos',
               ),
             ],
           ),

@@ -29,6 +29,8 @@ class WishlistNotifier extends ChangeNotifier {
 
   bool contains(int productId) => _ids.contains(productId);
 
+  int get count => _ids.length;
+
   Future<void> add(WishlistItem item) async {
     await WishlistService.add(item);
     _ids.add(item.product.id);

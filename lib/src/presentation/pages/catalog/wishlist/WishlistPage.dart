@@ -17,7 +17,8 @@ const _kDivider  = Color(0xFFEEEEEE);
 const _kRed      = Color(0xFFE53935);
 
 class WishlistPage extends StatefulWidget {
-  const WishlistPage({super.key});
+  final bool embedded;
+  const WishlistPage({super.key, this.embedded = false});
 
   @override
   State<WishlistPage> createState() => _WishlistPageState();
@@ -32,7 +33,17 @@ class _WishlistPageState extends State<WishlistPage> {
   void initState() {
     super.initState();
     _load();
+    // Keep list in sync when items are added/removed from other screens
+    WishlistNotifier.instance.addListener(_onWishlistChanged);
   }
+
+  @override
+  void dispose() {
+    WishlistNotifier.instance.removeListener(_onWishlistChanged);
+    super.dispose();
+  }
+
+  void _onWishlistChanged() => _load();
 
   Future<void> _load() async {
     setState(() => _loading = true);
@@ -108,10 +119,13 @@ class _WishlistPageState extends State<WishlistPage> {
         elevation: 0,
         scrolledUnderElevation: 1,
         shadowColor: _kDivider,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: _kPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
+        leading: widget.embedded
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: _kPrimary),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: Text(
           _loading
               ? 'Favoritos'
