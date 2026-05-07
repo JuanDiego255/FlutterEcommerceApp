@@ -1,14 +1,8 @@
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/MitaiApiService.dart';
 import 'package:ecommerce_flutter/src/domain/models/AttributeType.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-
-const Color _kBg      = Color(0xFFFAF8F5);
-const Color _kPrimary = Color(0xFF8B6F47);
-const Color _kAccent  = Color(0xFFC8966A);
-const Color _kSurface = Color(0xFFFFFFFF);
-const Color _kText    = Color(0xFF1A1A1A);
-const Color _kSub     = Color(0xFF6B6B6B);
 
 class AdminAttributePage extends StatefulWidget {
   const AdminAttributePage({super.key});
@@ -40,30 +34,34 @@ class _AdminAttributePageState extends State<AdminAttributePage> {
   }
 
   void _snack(String msg, {bool isError = true}) {
+    final cs = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: isError ? Colors.red.shade700 : _kPrimary,
+      backgroundColor: isError ? cs.error : cs.primary,
     ));
   }
 
   Future<void> _createAttrDialog() async {
+    final cs = Theme.of(context).colorScheme;
     final ctrl = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: cs.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Nuevo tipo de atributo'),
+        title: Text('Nuevo tipo de atributo',
+            style: TextStyle(color: cs.onBackground, fontWeight: FontWeight.w700)),
         content: TextField(
           controller: ctrl,
           autofocus: true,
+          style: TextStyle(color: cs.onBackground),
           decoration: const InputDecoration(labelText: 'Nombre (ej: Talla, Color)'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: _kPrimary),
-            child: const Text('Crear', style: TextStyle(color: Colors.white)),
+            child: const Text('Crear'),
           ),
         ],
       ),
@@ -80,17 +78,22 @@ class _AdminAttributePageState extends State<AdminAttributePage> {
   }
 
   Future<void> _deleteAttr(AttributeType attr, int index) async {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Eliminar "${attr.name}"'),
-        content: Text('Se eliminarán también los ${attr.values.length} valores. ¿Continuar?'),
+        backgroundColor: cs.surface,
+        title: Text('Eliminar "${attr.name}"',
+            style: TextStyle(color: cs.onBackground, fontWeight: FontWeight.w700)),
+        content: Text('Se eliminarán también los ${attr.values.length} valores. ¿Continuar?',
+            style: TextStyle(color: tokens.textMuted)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(backgroundColor: cs.error, foregroundColor: cs.onError),
+            child: const Text('Eliminar'),
           ),
         ],
       ),
@@ -107,23 +110,26 @@ class _AdminAttributePageState extends State<AdminAttributePage> {
   }
 
   Future<void> _createValueDialog(AttributeType attr, int attrIndex) async {
+    final cs = Theme.of(context).colorScheme;
     final ctrl = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: cs.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Agregar valor a "${attr.name}"'),
+        title: Text('Agregar valor a "${attr.name}"',
+            style: TextStyle(color: cs.onBackground, fontWeight: FontWeight.w700)),
         content: TextField(
           controller: ctrl,
           autofocus: true,
+          style: TextStyle(color: cs.onBackground),
           decoration: const InputDecoration(labelText: 'Valor (ej: S, M, L, Rojo)'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: _kPrimary),
-            child: const Text('Agregar', style: TextStyle(color: Colors.white)),
+            child: const Text('Agregar'),
           ),
         ],
       ),
@@ -152,64 +158,58 @@ class _AdminAttributePageState extends State<AdminAttributePage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Scaffold(
-      backgroundColor: _kBg,
       appBar: AppBar(
-        title: const Text('Gestión de atributos',
-            style: TextStyle(color: _kText, fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: _kSurface,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: _kPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        title: Text('Gestión de atributos',
+            style: TextStyle(color: cs.onBackground, fontWeight: FontWeight.bold, fontSize: 18)),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _createAttrDialog,
-        backgroundColor: _kPrimary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Nuevo tipo', style: TextStyle(color: Colors.white)),
+        icon: const Icon(Icons.add),
+        label: const Text('Nuevo tipo'),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: _kPrimary))
+          ? Center(child: CircularProgressIndicator(color: cs.primary))
           : _attributes.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.label_outline, size: 64, color: _kAccent),
+                      Icon(Icons.label_outline, size: 64, color: tokens.textSubtle),
                       const SizedBox(height: 16),
-                      const Text('Sin tipos de atributo', style: TextStyle(color: _kSub)),
+                      Text('Sin tipos de atributo', style: TextStyle(color: tokens.textMuted)),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: _createAttrDialog,
-                        style: ElevatedButton.styleFrom(backgroundColor: _kPrimary),
-                        icon: const Icon(Icons.add, color: Colors.white),
-                        label: const Text('Crear primero', style: TextStyle(color: Colors.white)),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Crear primero'),
                       ),
                     ],
                   ),
                 )
               : RefreshIndicator(
                   onRefresh: _load,
-                  color: _kPrimary,
+                  color: cs.primary,
                   child: ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                     itemCount: _attributes.length,
-                    itemBuilder: (ctx, i) => _buildAttrCard(i),
+                    itemBuilder: (ctx, i) => _buildAttrCard(i, cs, tokens),
                   ),
                 ),
     );
   }
 
-  Widget _buildAttrCard(int index) {
+  Widget _buildAttrCard(int index, ColorScheme cs, AppTokens tokens) {
     final attr = _attributes[index];
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: _kSurface,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
+        border: Border.all(color: cs.outline),
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -218,15 +218,15 @@ class _AdminAttributePageState extends State<AdminAttributePage> {
           title: Row(
             children: [
               Expanded(child: Text(attr.name,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: _kText))),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: cs.onBackground))),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: _kPrimary.withOpacity(0.12),
+                  color: cs.primary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text('${attr.values.length} valores',
-                    style: const TextStyle(fontSize: 11, color: _kPrimary, fontWeight: FontWeight.w600)),
+                    style: TextStyle(fontSize: 11, color: cs.primary, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -234,24 +234,24 @@ class _AdminAttributePageState extends State<AdminAttributePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
-                icon: const Icon(Icons.add_circle_outline, color: _kPrimary, size: 22),
+                icon: Icon(Icons.add_circle_outline, color: cs.primary, size: 22),
                 tooltip: 'Agregar valor',
                 onPressed: () => _createValueDialog(attr, index),
               ),
               IconButton(
-                icon: Icon(Icons.delete_outline, color: Colors.red.shade400, size: 22),
+                icon: Icon(Icons.delete_outline, color: cs.error, size: 22),
                 tooltip: 'Eliminar tipo',
                 onPressed: () => _deleteAttr(attr, index),
               ),
             ],
           ),
           children: [
-            const Divider(height: 1, indent: 16, endIndent: 16),
+            Divider(height: 1, indent: 16, endIndent: 16, color: cs.outline),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
               child: attr.values.isEmpty
-                  ? const Text('Sin valores. Toca + para agregar.',
-                      style: TextStyle(color: _kSub, fontSize: 13))
+                  ? Text('Sin valores. Toca + para agregar.',
+                      style: TextStyle(color: tokens.textMuted, fontSize: 13))
                   : Wrap(
                       spacing: 8,
                       runSpacing: 6,
@@ -260,11 +260,11 @@ class _AdminAttributePageState extends State<AdminAttributePage> {
                         final val = e.value;
                         return Chip(
                           label: Text(val.value,
-                              style: const TextStyle(fontSize: 12, color: _kText)),
-                          backgroundColor: const Color(0xFFF0EBE3),
-                          deleteIcon: Icon(Icons.close, size: 14, color: Colors.red.shade400),
+                              style: TextStyle(fontSize: 12, color: cs.onBackground)),
+                          backgroundColor: tokens.surfaceAlt,
+                          deleteIcon: Icon(Icons.close, size: 14, color: cs.error),
                           onDeleted: () => _deleteValue(attr, index, val, vi),
-                          side: BorderSide.none,
+                          side: BorderSide(color: cs.outline),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         );
                       }).toList(),

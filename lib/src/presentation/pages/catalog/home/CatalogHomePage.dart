@@ -27,6 +27,7 @@ import 'package:ecommerce_flutter/src/presentation/pages/client/order/list/bloc/
 import 'package:ecommerce_flutter/src/presentation/pages/client/order/list/bloc/ClientOrderListEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/order/list/bloc/ClientOrderListState.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/wishlist/WishlistPage.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:ecommerce_flutter/src/presentation/widgets/FullScreenImagePage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -35,14 +36,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 // Virtual "Inicio" nav item (id < 0 → never maps to a real category)
 final _kHomeNavItem = CatalogNavItem(id: -1, name: 'Inicio', image: null);
-
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const _kPrimary  = Color(0xFF2D2D2D);
-const _kAccent   = Color(0xFF8B6F47);
-const _kBg       = Color(0xFFFAFAFA);
-const _kCard     = Colors.white;
-const _kSub      = Color(0xFF757575);
-const _kDivider  = Color(0xFFEEEEEE);
 
 class CatalogHomePage extends StatelessWidget {
   const CatalogHomePage({super.key});
@@ -128,7 +121,6 @@ class _CatalogShellState extends State<_CatalogShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _kBg,
       body: IndexedStack(
         index: _navIndex,
         children: [
@@ -151,6 +143,7 @@ class _CatalogShellState extends State<_CatalogShell> {
     return BlocBuilder<CatalogHomeBloc, CatalogHomeState>(
       buildWhen: (prev, curr) => curr is CatalogHomeLoaded || curr is CatalogHomeInitial,
       builder: (context, catalogState) {
+        final cs = Theme.of(context).colorScheme;
         final navLabel = (catalogState is CatalogHomeLoaded &&
                 catalogState.data.navType == 'departments')
             ? 'Departamentos'
@@ -165,25 +158,12 @@ class _CatalogShellState extends State<_CatalogShell> {
             : Icons.category;
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.07),
-                  blurRadius: 12,
-                  offset: const Offset(0, -2)),
-            ],
+            color: cs.background,
+            border: Border(top: BorderSide(color: cs.outline, width: 1)),
           ),
           child: BottomNavigationBar(
             currentIndex: _navIndex,
             onTap: _onNavTap,
-            backgroundColor: Colors.white,
-            selectedItemColor: _kAccent,
-            unselectedItemColor: const Color(0xFF9E9E9E),
-            selectedLabelStyle:
-                const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-            unselectedLabelStyle: const TextStyle(fontSize: 11),
-            elevation: 0,
-            type: BottomNavigationBarType.fixed,
             items: [
               const BottomNavigationBarItem(
                 icon: Icon(Icons.home_outlined),
@@ -214,21 +194,13 @@ class _CatalogShellState extends State<_CatalogShell> {
                         const Icon(Icons.favorite_border),
                         if (count > 0)
                           Positioned(
-                            right: -6,
-                            top: -4,
+                            right: -6, top: -4,
                             child: Container(
-                              width: 16,
-                              height: 16,
-                              decoration: const BoxDecoration(
-                                  color: _kAccent, shape: BoxShape.circle),
+                              width: 16, height: 16,
+                              decoration: BoxDecoration(color: cs.primary, shape: BoxShape.circle),
                               child: Center(
-                                child: Text(
-                                  count > 9 ? '9+' : '$count',
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.w700),
-                                ),
+                                child: Text(count > 9 ? '9+' : '$count',
+                                    style: TextStyle(color: cs.onPrimary, fontSize: 8, fontWeight: FontWeight.w700)),
                               ),
                             ),
                           ),
@@ -246,21 +218,13 @@ class _CatalogShellState extends State<_CatalogShell> {
                         const Icon(Icons.favorite),
                         if (count > 0)
                           Positioned(
-                            right: -6,
-                            top: -4,
+                            right: -6, top: -4,
                             child: Container(
-                              width: 16,
-                              height: 16,
-                              decoration: const BoxDecoration(
-                                  color: _kAccent, shape: BoxShape.circle),
+                              width: 16, height: 16,
+                              decoration: BoxDecoration(color: cs.primary, shape: BoxShape.circle),
                               child: Center(
-                                child: Text(
-                                  count > 9 ? '9+' : '$count',
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.w700),
-                                ),
+                                child: Text(count > 9 ? '9+' : '$count',
+                                    style: TextStyle(color: cs.onPrimary, fontSize: 8, fontWeight: FontWeight.w700)),
                               ),
                             ),
                           ),
@@ -341,6 +305,8 @@ class _CategoriesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     final items = data.navItems;
     final isDept = data.navType == 'departments';
     final label = isDept ? 'Departamentos' : 'Categorías';
@@ -349,19 +315,13 @@ class _CategoriesView extends StatelessWidget {
       slivers: [
         SliverAppBar(
           pinned: true,
-          backgroundColor: _kCard,
-          elevation: 0,
-          scrolledUnderElevation: 1,
-          shadowColor: _kDivider,
-          title: Text(
-            label,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _kPrimary),
-          ),
+          title: Text(label),
         ),
         if (items.isEmpty)
-          const SliverFillRemaining(
+          SliverFillRemaining(
             child: Center(
-              child: Text('No hay categorías disponibles', style: TextStyle(color: _kSub)),
+              child: Text('No hay categorías disponibles',
+                  style: TextStyle(color: tokens.textMuted)),
             ),
           )
         else
@@ -393,6 +353,8 @@ class _CategoryGridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return GestureDetector(
       onTap: () => Navigator.pushNamed(
         context,
@@ -401,9 +363,9 @@ class _CategoryGridCard extends StatelessWidget {
       ),
       child: Container(
         decoration: BoxDecoration(
-          color: _kCard,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2))],
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: cs.outline),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -412,20 +374,20 @@ class _CategoryGridCard extends StatelessWidget {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: _kAccent.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _kDivider),
+                color: cs.primary.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: cs.outline),
               ),
               child: item.imageUrl.isNotEmpty
                   ? ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(AppRadius.lg - 2),
                       child: CachedNetworkImage(
                         imageUrl: item.imageUrl,
                         fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => const Icon(Icons.category_outlined, size: 28, color: _kAccent),
+                        errorWidget: (_, __, ___) => Icon(Icons.category_outlined, size: 28, color: cs.primary),
                       ),
                     )
-                  : const Icon(Icons.category_outlined, size: 28, color: _kAccent),
+                  : Icon(Icons.category_outlined, size: 28, color: cs.primary),
             ),
             const SizedBox(height: 8),
             Padding(
@@ -435,7 +397,7 @@ class _CategoryGridCard extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _kPrimary),
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: cs.onBackground),
               ),
             ),
           ],
@@ -479,6 +441,8 @@ class _AccountTabState extends State<_AccountTab> {
   }
 
   Widget _buildLoginPrompt(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -486,44 +450,34 @@ class _AccountTabState extends State<_AccountTab> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 90,
-              height: 90,
+              width: 90, height: 90,
               decoration: BoxDecoration(
-                color: _kAccent.withOpacity(0.08),
+                color: cs.primary.withOpacity(0.10),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.person_outline, size: 48, color: _kAccent),
+              child: Icon(Icons.person_outline, size: 48, color: cs.primary),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Mis pedidos',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _kPrimary),
-            ),
+            Text('Mis pedidos', style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 8),
             Text(
               'Iniciá sesión para ver el historial de tus pedidos.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 13, color: tokens.textMuted),
             ),
             const SizedBox(height: 28),
             SizedBox(
               width: double.infinity,
-              height: 48,
               child: ElevatedButton(
                 onPressed: widget.onLoginTap,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _kAccent,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('Iniciar sesión', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                child: const Text('Iniciar sesión'),
               ),
             ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => Navigator.pushNamed(context, 'register'),
-              child: const Text('¿No tenés cuenta? Registrate', style: TextStyle(color: _kAccent, fontSize: 13)),
+              child: Text('¿No tenés cuenta? Registrate',
+                  style: TextStyle(color: cs.primary, fontSize: 13)),
             ),
           ],
         ),
@@ -532,6 +486,8 @@ class _AccountTabState extends State<_AccountTab> {
   }
 
   Widget _buildOrdersView(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     final roles = widget.authSession?.user.roles ?? [];
     final adminIdx = roles.indexWhere((r) => r.route.contains('admin'));
     final adminRole = adminIdx >= 0 ? roles[adminIdx] : null;
@@ -541,22 +497,20 @@ class _AccountTabState extends State<_AccountTab> {
         children: [
           // Header
           Container(
-            color: Colors.white,
+            color: cs.surface,
             padding: const EdgeInsets.fromLTRB(20, 16, 8, 16),
             child: Row(
               children: [
-                const Text(
-                  'Mis pedidos',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _kPrimary),
-                ),
+                Text('Mis pedidos', style: Theme.of(context).textTheme.headlineMedium),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.refresh_outlined, color: _kAccent),
+                  icon: Icon(Icons.refresh_outlined, color: cs.primary),
                   tooltip: 'Actualizar',
                   onPressed: () => context.read<ClientOrderListBloc>().add(GetOrders()),
                 ),
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: _kAccent),
+                  icon: Icon(Icons.more_vert, color: cs.primary),
+                  color: cs.surface,
                   onSelected: (value) {
                     if (value == 'logout') {
                       widget.onLogout();
@@ -567,20 +521,20 @@ class _AccountTabState extends State<_AccountTab> {
                   },
                   itemBuilder: (_) => [
                     if (adminRole != null)
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'admin',
                         child: Row(children: [
-                          Icon(Icons.admin_panel_settings_outlined, size: 18, color: _kAccent),
-                          SizedBox(width: 8),
-                          Text('Panel Admin'),
+                          Icon(Icons.admin_panel_settings_outlined, size: 18, color: cs.primary),
+                          const SizedBox(width: 8),
+                          const Text('Panel Admin'),
                         ]),
                       ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'logout',
                       child: Row(children: [
-                        Icon(Icons.logout, size: 18, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
+                        Icon(Icons.logout, size: 18, color: cs.error),
+                        const SizedBox(width: 8),
+                        Text('Cerrar sesión', style: TextStyle(color: cs.error)),
                       ]),
                     ),
                   ],
@@ -588,7 +542,7 @@ class _AccountTabState extends State<_AccountTab> {
               ],
             ),
           ),
-          const Divider(height: 1, color: _kDivider),
+          Divider(height: 1, color: cs.outline),
           // Orders list
           Expanded(
             child: BlocListener<ClientOrderListBloc, ClientOrderListState>(
@@ -604,7 +558,7 @@ class _AccountTabState extends State<_AccountTab> {
                 builder: (context, state) {
                   final resp = state.response;
                   if (resp is Loading) {
-                    return const Center(child: CircularProgressIndicator(color: _kAccent));
+                    return Center(child: CircularProgressIndicator(color: cs.primary));
                   }
                   if (resp is Success) {
                     final orders = resp.data as List<Order>;
@@ -613,19 +567,19 @@ class _AccountTabState extends State<_AccountTab> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.receipt_long_outlined, size: 72, color: Colors.grey[300]),
+                            Icon(Icons.receipt_long_outlined, size: 72, color: tokens.textSubtle),
                             const SizedBox(height: 16),
                             Text('No tenés pedidos aún',
-                                style: TextStyle(fontSize: 16, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                                style: TextStyle(fontSize: 16, color: tokens.textMuted, fontWeight: FontWeight.w500)),
                             const SizedBox(height: 8),
                             Text('Tus pedidos aparecerán aquí',
-                                style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+                                style: TextStyle(fontSize: 13, color: tokens.textSubtle)),
                           ],
                         ),
                       );
                     }
                     return RefreshIndicator(
-                      color: _kAccent,
+                      color: cs.primary,
                       onRefresh: () async => context.read<ClientOrderListBloc>().add(GetOrders()),
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -641,18 +595,13 @@ class _AccountTabState extends State<_AccountTab> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+                            Icon(Icons.error_outline, size: 48, color: tokens.textMuted),
                             const SizedBox(height: 12),
                             Text((resp).message,
-                                style: const TextStyle(color: Colors.grey),
+                                style: TextStyle(color: tokens.textMuted),
                                 textAlign: TextAlign.center),
                             const SizedBox(height: 16),
                             ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _kAccent,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
                               onPressed: () => context.read<ClientOrderListBloc>().add(GetOrders()),
                               child: const Text('Reintentar'),
                             ),
@@ -661,7 +610,7 @@ class _AccountTabState extends State<_AccountTab> {
                       ),
                     );
                   }
-                  return const Center(child: CircularProgressIndicator(color: _kAccent));
+                  return Center(child: CircularProgressIndicator(color: cs.primary));
                 },
               ),
             ),
@@ -740,22 +689,20 @@ class _ContentViewState extends State<_ContentView> {
   // ─── App bar ──────────────────────────────────────────────────────────────
 
   SliverAppBar _buildAppBar() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     final info = data.tenantInfo;
     return SliverAppBar(
       pinned: true,
-      backgroundColor: _kCard,
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      shadowColor: _kDivider,
       title: Row(
         children: [
           if (info.logoUrl.isNotEmpty) ...[
             ClipRRect(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadius.md),
               child: CachedNetworkImage(
                 imageUrl: info.logoUrl,
-                height: 36,
-                width: 36,
+                height: 32,
+                width: 32,
                 fit: BoxFit.contain,
                 errorWidget: (_, __, ___) => const SizedBox.shrink(),
               ),
@@ -765,7 +712,7 @@ class _ContentViewState extends State<_ContentView> {
           Expanded(
             child: Text(
               info.title.isNotEmpty ? info.title : TenantSession.host,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _kPrimary),
+              style: Theme.of(context).textTheme.titleLarge,
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -774,7 +721,7 @@ class _ContentViewState extends State<_ContentView> {
       actions: [
         // Refresh catalog
         IconButton(
-          icon: const Icon(Icons.refresh_outlined, color: _kSub, size: 22),
+          icon: Icon(Icons.refresh_outlined, color: tokens.textMuted, size: 22),
           tooltip: 'Actualizar catálogo',
           onPressed: () => context.read<CatalogHomeBloc>().add(CatalogHomeLoad()),
         ),
@@ -785,22 +732,20 @@ class _ContentViewState extends State<_ContentView> {
             clipBehavior: Clip.none,
             children: [
               IconButton(
-                icon: const Icon(Icons.shopping_bag_outlined, color: _kPrimary, size: 22),
+                icon: Icon(Icons.shopping_bag_outlined, color: cs.onBackground, size: 22),
                 tooltip: 'Carrito',
                 onPressed: () => Navigator.pushNamed(context, 'client/shopping_bag'),
               ),
               if (count > 0)
                 Positioned(
-                  right: 6,
-                  top: 6,
+                  right: 6, top: 6,
                   child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(color: _kAccent, shape: BoxShape.circle),
+                    width: 16, height: 16,
+                    decoration: BoxDecoration(color: cs.primary, shape: BoxShape.circle),
                     child: Center(
                       child: Text(
                         count > 9 ? '9+' : '$count',
-                        style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700),
+                        style: TextStyle(color: cs.onPrimary, fontSize: 8, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
@@ -809,8 +754,9 @@ class _ContentViewState extends State<_ContentView> {
           ),
         ),
         PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert, color: _kSub, size: 20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          icon: Icon(Icons.more_vert, color: tokens.textMuted, size: 20),
+          color: cs.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
           onSelected: (value) {
             if (value == 'login_client') {
               Navigator.pushNamed(context, 'login').then((_) => widget.onAuthChanged());
@@ -826,28 +772,28 @@ class _ContentViewState extends State<_ContentView> {
           },
           itemBuilder: (_) => [
             if (_authSession == null)
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'login_client',
                 child: Row(children: [
-                  Icon(Icons.login_outlined, size: 18, color: _kAccent),
-                  SizedBox(width: 10),
-                  Text('Iniciar sesión', style: TextStyle(fontSize: 13)),
+                  Icon(Icons.login_outlined, size: 18, color: cs.primary),
+                  const SizedBox(width: 10),
+                  const Text('Iniciar sesión', style: TextStyle(fontSize: 13)),
                 ]),
               ),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'admin',
               child: Row(children: [
-                Icon(Icons.admin_panel_settings_outlined, size: 18, color: _kAccent),
-                SizedBox(width: 10),
-                Text('Panel admin', style: TextStyle(fontSize: 13)),
+                Icon(Icons.admin_panel_settings_outlined, size: 18, color: cs.primary),
+                const SizedBox(width: 10),
+                const Text('Panel admin', style: TextStyle(fontSize: 13)),
               ]),
             ),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'change',
               child: Row(children: [
-                Icon(Icons.swap_horiz_outlined, size: 18, color: _kSub),
-                SizedBox(width: 10),
-                Text('Cambiar tienda', style: TextStyle(fontSize: 13)),
+                Icon(Icons.swap_horiz_outlined, size: 18, color: cs.onBackground),
+                const SizedBox(width: 10),
+                const Text('Cambiar tienda', style: TextStyle(fontSize: 13)),
               ]),
             ),
           ],
@@ -858,55 +804,55 @@ class _ContentViewState extends State<_ContentView> {
 
   // ─── Cintillo ─────────────────────────────────────────────────────────────
 
-  SliverToBoxAdapter _buildCintillo() => SliverToBoxAdapter(
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      color: _kPrimary,
-      child: Text(
-        data.tenantInfo.textCintillo!,
-        textAlign: TextAlign.center,
-        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+  SliverToBoxAdapter _buildCintillo() {
+    final cs = Theme.of(context).colorScheme;
+    return SliverToBoxAdapter(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        color: cs.surface,
+        child: Text(
+          data.tenantInfo.textCintillo!,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: cs.primary, fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.4),
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   // ─── Search bar ───────────────────────────────────────────────────────────
 
-  SliverToBoxAdapter _buildSearchBar() => SliverToBoxAdapter(
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: TextField(
-        controller: widget.searchCtrl,
-        textInputAction: TextInputAction.search,
-        onSubmitted: (_) => _doSearch(widget.searchCtrl.text),
-        style: const TextStyle(fontSize: 14),
-        decoration: InputDecoration(
-          hintText: 'Buscar productos...',
-          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-          prefixIcon: GestureDetector(
-            onTap: () => _doSearch(widget.searchCtrl.text),
-            child: const Icon(Icons.search, color: _kAccent, size: 20),
+  SliverToBoxAdapter _buildSearchBar() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: TextField(
+          controller: widget.searchCtrl,
+          textInputAction: TextInputAction.search,
+          onSubmitted: (_) => _doSearch(widget.searchCtrl.text),
+          style: TextStyle(fontSize: 14, color: cs.onBackground),
+          decoration: InputDecoration(
+            hintText: 'Buscar productos...',
+            prefixIcon: GestureDetector(
+              onTap: () => _doSearch(widget.searchCtrl.text),
+              child: Icon(Icons.search, color: cs.primary, size: 20),
+            ),
+            suffixIcon: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: widget.searchCtrl,
+              builder: (_, val, __) => val.text.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(Icons.close, size: 18, color: tokens.textMuted),
+                      onPressed: () => widget.searchCtrl.clear(),
+                    )
+                  : const SizedBox.shrink(),
+            ),
           ),
-          suffixIcon: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: widget.searchCtrl,
-            builder: (_, val, __) => val.text.isNotEmpty
-                ? IconButton(
-                    icon: Icon(Icons.close, size: 18, color: Colors.grey[400]),
-                    onPressed: () => widget.searchCtrl.clear(),
-                  )
-                : const SizedBox.shrink(),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(vertical: 0),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _kDivider)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _kDivider)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _kAccent)),
         ),
       ),
-    ),
-  );
+    );
+  }
 
   // ─── Nav section ──────────────────────────────────────────────────────────
 
@@ -921,7 +867,7 @@ class _ContentViewState extends State<_ContentView> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
             child: Text(
               data.navType == 'departments' ? 'Departamentos' : 'Categorías',
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary),
+              style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
           SizedBox(
@@ -958,11 +904,10 @@ class _ContentViewState extends State<_ContentView> {
   List<Widget> _buildFeaturedSlivers() {
     if (data.featured.isEmpty) return [];
     return [
-      const SliverToBoxAdapter(
+      SliverToBoxAdapter(
         child: Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
-          child: Text('Destacados',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Text('Destacados', style: Theme.of(context).textTheme.titleLarge),
         ),
       ),
       SliverPadding(
@@ -972,7 +917,7 @@ class _ContentViewState extends State<_ContentView> {
             crossAxisCount: 2,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 0.62,
+            childAspectRatio: 0.60,
           ),
           delegate: SliverChildBuilderDelegate(
             (_, i) => _FeaturedCard(
@@ -993,6 +938,8 @@ class _ContentViewState extends State<_ContentView> {
   // ─── Footer ───────────────────────────────────────────────────────────────
 
   SliverToBoxAdapter _buildFooter() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     final info = data.tenantInfo;
     final hasWa    = info.whatsapp?.isNotEmpty ?? false;
     final hasEmail = info.email?.isNotEmpty ?? false;
@@ -1006,44 +953,50 @@ class _ContentViewState extends State<_ContentView> {
         padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: const [BoxShadow(color: Color(0x0C000000), blurRadius: 20, offset: Offset(0, 4))],
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: cs.outline),
           ),
           child: Column(
             children: [
               Container(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(colors: [Color(0xFF6B4F30), _kAccent], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.accentPressed, AppColors.accent],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
                 ),
                 child: Row(
                   children: [
                     if (info.logoUrl.isNotEmpty)
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                         child: CachedNetworkImage(
                           imageUrl: info.logoUrl,
-                          width: 44,
-                          height: 44,
+                          width: 44, height: 44,
                           fit: BoxFit.contain,
                           errorWidget: (_, __, ___) =>
-                              const Icon(Icons.storefront_rounded, color: Colors.white, size: 28),
+                              const Icon(Icons.storefront_rounded, color: AppColors.onAccent, size: 28),
                         ),
                       )
                     else
-                      const Icon(Icons.storefront_rounded, color: Colors.white, size: 28),
+                      const Icon(Icons.storefront_rounded, color: AppColors.onAccent, size: 28),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (info.title.isNotEmpty)
-                            Text(info.title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                            Text(info.title,
+                                style: const TextStyle(color: AppColors.onAccent, fontSize: 16, fontWeight: FontWeight.w700)),
                           if (info.footer?.isNotEmpty ?? false) ...[
                             const SizedBox(height: 3),
-                            Text(info.footer!, style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+                            Text(info.footer!,
+                                style: TextStyle(color: AppColors.onAccent.withOpacity(0.75), fontSize: 12),
+                                maxLines: 2, overflow: TextOverflow.ellipsis),
                           ],
                         ],
                       ),
@@ -1071,7 +1024,7 @@ class _ContentViewState extends State<_ContentView> {
                             Expanded(child: _ContactChip(
                               icon: Icons.email_rounded,
                               label: info.email!,
-                              color: _kAccent,
+                              color: cs.primary,
                               onTap: () => _launchUrl('mailto:${info.email}'),
                             )),
                         ],
@@ -1089,23 +1042,29 @@ class _ContentViewState extends State<_ContentView> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF5F0EB),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: _kDivider),
+                                  color: cs.primary.withOpacity(0.10),
+                                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  border: Border.all(color: cs.outline),
                                 ),
-                                child: Text(s.name, style: const TextStyle(fontSize: 11, color: _kAccent, fontWeight: FontWeight.w500)),
+                                child: Text(s.name,
+                                    style: TextStyle(fontSize: 11, color: cs.primary, fontWeight: FontWeight.w500)),
                               ),
                             ))
                             .toList(),
                       ),
                     const SizedBox(height: 14),
-                    const Divider(height: 1, color: _kDivider),
+                    Divider(height: 1, color: cs.outline),
                     const SizedBox(height: 10),
                     GestureDetector(
                       onTap: () => _launchUrl('https://${TenantSession.host}/privacy-policy'),
                       child: Text(
                         'Política de privacidad',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[500], decoration: TextDecoration.underline, decorationColor: Colors.grey[400]),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: tokens.textMuted,
+                          decoration: TextDecoration.underline,
+                          decorationColor: tokens.textSubtle,
+                        ),
                       ),
                     ),
                   ],
@@ -1135,6 +1094,8 @@ class _NavChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
@@ -1143,19 +1104,25 @@ class _NavChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 56, height: 56,
               decoration: BoxDecoration(
-                color: isSelected ? _kAccent.withOpacity(0.12) : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: isSelected ? _kAccent : _kDivider, width: isSelected ? 2 : 1),
+                color: isSelected ? cs.primary.withOpacity(0.12) : cs.surface,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(
+                  color: isSelected ? cs.primary : cs.outline,
+                  width: isSelected ? 1.5 : 1,
+                ),
               ),
               child: item.imageUrl.isNotEmpty
                   ? ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: CachedNetworkImage(imageUrl: item.imageUrl, fit: BoxFit.cover, errorWidget: (_, __, ___) => _icon()),
+                      borderRadius: BorderRadius.circular(AppRadius.lg - 1),
+                      child: CachedNetworkImage(
+                        imageUrl: item.imageUrl,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => _icon(cs, isSelected),
+                      ),
                     )
-                  : _icon(),
+                  : _icon(cs, isSelected),
             ),
             const SizedBox(height: 4),
             Text(
@@ -1166,7 +1133,7 @@ class _NavChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: isSelected ? _kAccent : _kSub,
+                color: isSelected ? cs.primary : tokens.textMuted,
               ),
             ),
           ],
@@ -1175,7 +1142,9 @@ class _NavChip extends StatelessWidget {
     );
   }
 
-  Widget _icon() => Icon(item.id < 0 ? Icons.home_rounded : Icons.category_outlined, size: 22, color: isSelected ? _kAccent : _kSub);
+  Widget _icon(ColorScheme cs, bool selected) =>
+      Icon(item.id < 0 ? Icons.home_rounded : Icons.category_outlined,
+          size: 22, color: selected ? cs.primary : cs.onBackground);
 }
 
 // ─── Featured card ────────────────────────────────────────────────────────────
@@ -1248,17 +1217,27 @@ class _FeaturedCardState extends State<_FeaturedCard> {
     CartNotifier.instance.update(allProducts.length);
 
     if (!context.mounted) return;
+    final cs = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(variantLabel != null
-            ? '${p.name} ($variantLabel) agregado al carrito'
-            : '${p.name} agregado al carrito'),
-        duration: const Duration(seconds: 3),
+        backgroundColor: cs.surface,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        action: SnackBarAction(label: 'Ver carrito', onPressed: () {
-          Navigator.pushNamed(context, 'client/shopping_bag');
-        }),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          side: BorderSide(color: cs.primary, width: 1),
+        ),
+        content: Text(
+          variantLabel != null
+              ? '${p.name} ($variantLabel) agregado al carrito'
+              : '${p.name} agregado al carrito',
+          style: TextStyle(color: cs.onBackground),
+        ),
+        duration: const Duration(seconds: 3),
+        action: SnackBarAction(
+          label: 'Ver carrito',
+          textColor: cs.primary,
+          onPressed: () => Navigator.pushNamed(context, 'client/shopping_bag'),
+        ),
       ),
     );
   }
@@ -1280,8 +1259,9 @@ class _FeaturedCardState extends State<_FeaturedCard> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     final p = widget.product;
-    final attrs = p.availableAttrs;
     return ListenableBuilder(
       listenable: _wishlist,
       builder: (context, _) {
@@ -1290,19 +1270,20 @@ class _FeaturedCardState extends State<_FeaturedCard> {
           onTap: widget.onTap,
           child: Container(
             decoration: BoxDecoration(
-              color: _kCard,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2))],
+              color: cs.surface,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: cs.outline),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Image — aspect 1/1.15
                 AspectRatio(
-                  aspectRatio: 1.0,
+                  aspectRatio: 1 / 1.15,
                   child: Stack(
                     children: [
                       ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
                         child: p.imageUrl.isNotEmpty
                             ? CachedNetworkImage(
                                 imageUrl: p.imageUrl,
@@ -1312,35 +1293,47 @@ class _FeaturedCardState extends State<_FeaturedCard> {
                                 alignment: Alignment.topCenter,
                                 memCacheWidth: 400,
                                 memCacheHeight: 400,
-                                placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
-                                errorWidget: (_, __, ___) => _imgPlaceholder(),
+                                placeholder: (_, __) => Container(color: tokens.surfaceAlt),
+                                errorWidget: (_, __, ___) => _imgPlaceholder(tokens),
                               )
-                            : _imgPlaceholder(),
+                            : _imgPlaceholder(tokens),
                       ),
+                      // Discount badge
                       if (p.hasDiscount)
                         Positioned(
                           top: 8, left: 8,
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                            decoration: BoxDecoration(color: const Color(0xFFE53935), borderRadius: BorderRadius.circular(6)),
-                            child: Text('-${p.discount}%', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                            decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                            child: Text('-${p.discount}%',
+                                style: TextStyle(color: cs.onPrimary, fontSize: 10, fontWeight: FontWeight.w700)),
                           ),
                         ),
+                      // Wishlist button
                       Positioned(
-                        top: 6, right: 6,
+                        top: 8, right: 8,
                         child: GestureDetector(
                           onTap: _toggleWishlist,
                           behavior: HitTestBehavior.opaque,
                           child: Container(
                             width: 32, height: 32,
-                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), shape: BoxShape.circle, boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 4)]),
+                            decoration: BoxDecoration(
+                              color: const Color(0x99000000),
+                              shape: BoxShape.circle,
+                            ),
                             child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 220),
-                              child: Icon(inWishlist ? Icons.favorite : Icons.favorite_border, key: ValueKey(inWishlist), size: 16, color: inWishlist ? const Color(0xFFE53935) : _kSub),
+                              duration: const Duration(milliseconds: 200),
+                              child: Icon(
+                                inWishlist ? Icons.favorite : Icons.favorite_border,
+                                key: ValueKey(inWishlist),
+                                size: 16,
+                                color: inWishlist ? cs.error : AppColors.textPrimary,
+                              ),
                             ),
                           ),
                         ),
                       ),
+                      // Fullscreen
                       if (p.imageUrl.isNotEmpty)
                         Positioned(
                           bottom: 8, right: 8,
@@ -1348,7 +1341,10 @@ class _FeaturedCardState extends State<_FeaturedCard> {
                             onTap: () => FullScreenImagePage.show(context, [p.imageUrl]),
                             child: Container(
                               width: 28, height: 28,
-                              decoration: BoxDecoration(color: Colors.black.withOpacity(0.45), borderRadius: BorderRadius.circular(6)),
+                              decoration: BoxDecoration(
+                                color: const Color(0x80000000),
+                                borderRadius: BorderRadius.circular(AppRadius.sm),
+                              ),
                               child: const Icon(Icons.fullscreen, color: Colors.white, size: 16),
                             ),
                           ),
@@ -1356,38 +1352,51 @@ class _FeaturedCardState extends State<_FeaturedCard> {
                     ],
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kPrimary)),
-                      const SizedBox(height: 4),
-                      if (p.hasDiscount) ...[
-                        Text('₡${fmtPrice(p.price)}', style: const TextStyle(fontSize: 10, color: _kSub, decoration: TextDecoration.lineThrough)),
-                        Text('₡${fmtPrice(p.finalPrice)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFE53935))),
-                      ] else
-                        Text('₡${fmtPrice(p.price)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent)),
-                      const SizedBox(height: 6),
-                      GestureDetector(
-                        onTap: () => _addToCart(context),
-                        behavior: HitTestBehavior.opaque,
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                          decoration: BoxDecoration(color: _kPrimary, borderRadius: BorderRadius.circular(8)),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_shopping_cart, size: 12, color: Colors.white),
-                              SizedBox(width: 4),
-                              Text('Agregar', style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
-                            ],
+                // Info
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(p.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: cs.onBackground)),
+                        const SizedBox(height: 4),
+                        if (p.hasDiscount) ...[
+                          Text('₡${fmtPrice(p.price)}',
+                              style: TextStyle(fontSize: 10, color: tokens.textSubtle, decoration: TextDecoration.lineThrough)),
+                          Text('₡${fmtPrice(p.finalPrice)}',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.error)),
+                        ] else
+                          Text('₡${fmtPrice(p.price)}',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: cs.onBackground)),
+                        const Spacer(),
+                        // Add to cart button
+                        GestureDetector(
+                          onTap: () => _addToCart(context),
+                          behavior: HitTestBehavior.opaque,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: cs.primary,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_shopping_cart, size: 12, color: cs.onPrimary),
+                                const SizedBox(width: 4),
+                                Text('Agregar',
+                                    style: TextStyle(fontSize: 10, color: cs.onPrimary, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -1398,9 +1407,9 @@ class _FeaturedCardState extends State<_FeaturedCard> {
     );
   }
 
-  Widget _imgPlaceholder() => Container(
-    color: const Color(0xFFF5F5F5),
-    child: const Center(child: Icon(Icons.image_outlined, size: 36, color: Color(0xFFBDBDBD))),
+  Widget _imgPlaceholder(AppTokens tokens) => Container(
+    color: tokens.surfaceAlt,
+    child: Center(child: Icon(Icons.image_outlined, size: 36, color: tokens.textSubtle)),
   );
 }
 
@@ -1418,13 +1427,19 @@ class _ContactChip extends StatelessWidget {
     onTap: onTap,
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(10), border: Border.all(color: color.withOpacity(0.25))),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, color: color, size: 16),
           const SizedBox(width: 6),
-          Flexible(child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+          Flexible(child: Text(label,
+              style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis)),
         ],
       ),
     ),
@@ -1437,7 +1452,6 @@ Future<String?> _showCartVariantSheet(BuildContext context, Map<String, List<Str
   return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (_) => _CartVariantPickerSheet(attrGroups: attrGroups, defaultVariant: defaultVariant),
   );
 }
@@ -1468,17 +1482,15 @@ class _CartVariantPickerSheetState extends State<_CartVariantPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 32 + MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 32 + MediaQuery.of(context).viewInsets.bottom),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(child: Container(width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
-          const SizedBox(height: 16),
-          const Text('Seleccioná una variante',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+          Text('Seleccioná una variante', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 14),
           Flexible(
             child: SingleChildScrollView(
@@ -1489,7 +1501,8 @@ class _CartVariantPickerSheetState extends State<_CartVariantPickerSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(e.key, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kSub)),
+                      Text(e.key,
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 0.6)),
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 6, runSpacing: 6,
@@ -1500,12 +1513,14 @@ class _CartVariantPickerSheetState extends State<_CartVariantPickerSheet> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                               decoration: BoxDecoration(
-                                color: isSel ? _kAccent : const Color(0xFFF5F0EB),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: _kAccent.withOpacity(isSel ? 1.0 : 0.3)),
+                                color: isSel ? cs.primary : cs.surface,
+                                borderRadius: BorderRadius.circular(AppRadius.pill),
+                                border: Border.all(color: isSel ? cs.primary : cs.outline),
                               ),
-                              child: Text(v, style: TextStyle(
-                                  fontSize: 13, color: isSel ? Colors.white : _kAccent, fontWeight: FontWeight.w600)),
+                              child: Text(v,
+                                  style: TextStyle(fontSize: 13,
+                                      color: isSel ? cs.onPrimary : cs.onBackground,
+                                      fontWeight: FontWeight.w500)),
                             ),
                           );
                         }).toList(),
@@ -1521,14 +1536,8 @@ class _CartVariantPickerSheetState extends State<_CartVariantPickerSheet> {
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => Navigator.pop(context, _buildLabel()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _kPrimary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
               icon: const Icon(Icons.add_shopping_cart, size: 16),
-              label: const Text('Agregar al carrito', style: TextStyle(fontWeight: FontWeight.w600)),
+              label: const Text('Agregar al carrito'),
             ),
           ),
         ],
@@ -1540,7 +1549,6 @@ class _CartVariantPickerSheetState extends State<_CartVariantPickerSheet> {
 Future<String?> _showVariantPicker(BuildContext context, List<String> attrs) {
   return showModalBottomSheet<String>(
     context: context,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (_) => _VariantPickerSheet(attrs: attrs),
   );
 }
@@ -1549,7 +1557,6 @@ Future<String?> _showSelectableAttrsSheet(BuildContext context, Map<String, List
   return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (_) => _SelectableAttrsSheet(attrGroups: attrGroups),
   );
 }
@@ -1574,15 +1581,15 @@ class _SelectableAttrsSheetState extends State<_SelectableAttrsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 32 + MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 32 + MediaQuery.of(context).viewInsets.bottom),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
-          const SizedBox(height: 16),
-          const Text('Atributos disponibles', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+          Text('Atributos disponibles', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 14),
           Flexible(
             child: SingleChildScrollView(
@@ -1593,7 +1600,7 @@ class _SelectableAttrsSheetState extends State<_SelectableAttrsSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(e.key, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kSub)),
+                      Text(e.key, style: Theme.of(context).textTheme.labelSmall),
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 6, runSpacing: 6,
@@ -1603,8 +1610,15 @@ class _SelectableAttrsSheetState extends State<_SelectableAttrsSheet> {
                             onTap: () => setState(() { if (isSel) _selected.remove(e.key); else _selected[e.key] = v; }),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(color: isSel ? _kAccent : const Color(0xFFF5F0EB), borderRadius: BorderRadius.circular(10), border: Border.all(color: _kAccent.withOpacity(isSel ? 1.0 : 0.3))),
-                              child: Text(v, style: TextStyle(fontSize: 13, color: isSel ? Colors.white : _kAccent, fontWeight: FontWeight.w600)),
+                              decoration: BoxDecoration(
+                                color: isSel ? cs.primary : cs.surface,
+                                borderRadius: BorderRadius.circular(AppRadius.pill),
+                                border: Border.all(color: isSel ? cs.primary : cs.outline),
+                              ),
+                              child: Text(v,
+                                  style: TextStyle(fontSize: 13,
+                                      color: isSel ? cs.onPrimary : cs.onBackground,
+                                      fontWeight: FontWeight.w500)),
                             ),
                           );
                         }).toList(),
@@ -1620,9 +1634,8 @@ class _SelectableAttrsSheetState extends State<_SelectableAttrsSheet> {
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => Navigator.pop(context, _buildLabel()),
-              style: ElevatedButton.styleFrom(backgroundColor: _kAccent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               icon: const Icon(Icons.favorite, size: 16),
-              label: const Text('Guardar en favoritos', style: TextStyle(fontWeight: FontWeight.w600)),
+              label: const Text('Guardar en favoritos'),
             ),
           ),
         ],
@@ -1637,15 +1650,14 @@ class _VariantPickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
-          const SizedBox(height: 16),
-          const Text('Seleccioná una variante', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+          Text('Seleccioná una variante', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 14),
           Flexible(
             child: SingleChildScrollView(
@@ -1655,8 +1667,13 @@ class _VariantPickerSheet extends StatelessWidget {
                   onTap: () => Navigator.pop(context, a),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(color: const Color(0xFFF5F0EB), borderRadius: BorderRadius.circular(10), border: Border.all(color: _kAccent.withOpacity(0.3))),
-                    child: Text(a, style: const TextStyle(fontSize: 13, color: _kAccent, fontWeight: FontWeight.w600)),
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      border: Border.all(color: cs.primary),
+                    ),
+                    child: Text(a,
+                        style: TextStyle(fontSize: 13, color: cs.primary, fontWeight: FontWeight.w500)),
                   ),
                 )).toList(),
               ),
@@ -1668,62 +1685,35 @@ class _VariantPickerSheet extends StatelessWidget {
   }
 }
 
-// ─── Loading / error ──────────────────────────────────────────────────────────
+// ─── Loading / Error views ────────────────────────────────────────────────────
 
 class _LoadingView extends StatelessWidget {
   const _LoadingView();
-
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(color: _kAccent),
-          SizedBox(height: 16),
-          Text('Cargando...', style: TextStyle(color: _kSub, fontSize: 13)),
-        ],
-      ),
-    );
+    final cs = Theme.of(context).colorScheme;
+    return Center(child: CircularProgressIndicator(color: cs.primary));
   }
 }
 
 class _ErrorView extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
-
   const _ErrorView({required this.message, required this.onRetry});
-
   @override
   Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_outlined, size: 48, color: _kSub),
+            Icon(Icons.wifi_off_outlined, size: 56, color: tokens.textMuted),
             const SizedBox(height: 16),
-            const Text('No se pudo cargar el catálogo',
-                style: TextStyle(fontWeight: FontWeight.w600, color: _kPrimary), textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            Text(message, style: const TextStyle(fontSize: 12, color: _kSub), textAlign: TextAlign.center),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              style: ElevatedButton.styleFrom(backgroundColor: _kAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Reintentar'),
-            ),
-            const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: () async {
-                await TenantSession.clear();
-                if (context.mounted) Navigator.pushReplacementNamed(context, 'tenant/select');
-              },
-              icon: const Icon(Icons.swap_horiz_outlined, size: 16, color: _kSub),
-              label: const Text('Cambiar tienda', style: TextStyle(color: _kSub, fontSize: 13)),
-            ),
+            Text(message, style: TextStyle(color: tokens.textMuted), textAlign: TextAlign.center),
+            const SizedBox(height: 20),
+            ElevatedButton(onPressed: onRetry, child: const Text('Reintentar')),
           ],
         ),
       ),

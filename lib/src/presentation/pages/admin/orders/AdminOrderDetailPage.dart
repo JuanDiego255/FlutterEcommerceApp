@@ -2,18 +2,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/MitaiApiService.dart';
 import 'package:ecommerce_flutter/src/domain/models/AdminOrder.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-// ─── Theme ────────────────────────────────────────────────────────────────────
-const Color _kBg      = Color(0xFFFAF8F5);
-const Color _kPrimary = Color(0xFF8B6F47);
-const Color _kAccent  = Color(0xFFC8966A);
-const Color _kSurface = Color(0xFFFFFFFF);
-const Color _kText    = Color(0xFF1A1A1A);
-const Color _kSub     = Color(0xFF6B6B6B);
-const Color _kDivider = Color(0xFFF0EBE3);
-
+// ─── Semantic status colors (business-logic — do NOT replace) ─────────────────
 const Color _cVigente   = Color(0xFF22C55E);
 const Color _cEntregado = Color(0xFF3B82F6);
 const Color _cCancelado = Color(0xFFEF4444);
@@ -74,9 +67,10 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
   }
 
   void _snack(String msg, {bool ok = false}) {
+    final cs = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: ok ? _kPrimary : Colors.red.shade700,
+      backgroundColor: ok ? cs.primary : cs.error,
     ));
   }
 
@@ -114,45 +108,57 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     if (_order.cancelBuy == 0) {
       chosen = await showDialog<int>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Cancelar pedido'),
-          content: const Text('¿Cómo deseas proceder?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Volver')),
-            OutlinedButton(
-              onPressed: () => Navigator.pop(ctx, 1),
-              child: const Text('Iniciar cancelación', style: TextStyle(color: _cPendCan)),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, 2),
-              style: ElevatedButton.styleFrom(backgroundColor: _cCancelado),
-              child: const Text('Cancelar ahora', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
+        builder: (ctx) {
+          final cs = Theme.of(ctx).colorScheme;
+          return AlertDialog(
+            backgroundColor: cs.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text('Cancelar pedido', style: TextStyle(color: cs.onBackground)),
+            content: Text('¿Cómo deseas proceder?',
+                style: TextStyle(color: Theme.of(ctx).extension<AppTokens>()!.textMuted)),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Volver')),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(ctx, 1),
+                child: const Text('Iniciar cancelación', style: TextStyle(color: _cPendCan)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, 2),
+                style: ElevatedButton.styleFrom(backgroundColor: _cCancelado),
+                child: const Text('Cancelar ahora', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
       );
     } else {
       chosen = await showDialog<int>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(_order.cancelBuy == 1 ? 'En proceso de cancelación' : 'Pedido cancelado'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cerrar')),
-            if (_order.cancelBuy == 1)
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, 2),
-                style: ElevatedButton.styleFrom(backgroundColor: _cCancelado),
-                child: const Text('Confirmar cancelación', style: TextStyle(color: Colors.white)),
-              ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, 0),
-              style: ElevatedButton.styleFrom(backgroundColor: _cVigente),
-              child: const Text('Reactivar', style: TextStyle(color: Colors.white)),
+        builder: (ctx) {
+          final cs = Theme.of(ctx).colorScheme;
+          return AlertDialog(
+            backgroundColor: cs.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text(
+              _order.cancelBuy == 1 ? 'En proceso de cancelación' : 'Pedido cancelado',
+              style: TextStyle(color: cs.onBackground),
             ),
-          ],
-        ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cerrar')),
+              if (_order.cancelBuy == 1)
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, 2),
+                  style: ElevatedButton.styleFrom(backgroundColor: _cCancelado),
+                  child: const Text('Confirmar cancelación', style: TextStyle(color: Colors.white)),
+                ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, 0),
+                style: ElevatedButton.styleFrom(backgroundColor: _cVigente),
+                child: const Text('Reactivar', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
       );
     }
     if (chosen == null || !mounted) return;
@@ -196,37 +202,55 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     final ctrl = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Registrar abono'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Pendiente: ₡${_fmt.format(_order.pendiente)}',
-                style: const TextStyle(color: _cApartado, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: ctrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Monto del abono',
-                prefixText: '₡ ',
-                border: OutlineInputBorder(),
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        final tokens = Theme.of(ctx).extension<AppTokens>()!;
+        return AlertDialog(
+          backgroundColor: cs.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Registrar abono', style: TextStyle(color: cs.onBackground)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Pendiente: ₡${_fmt.format(_order.pendiente)}',
+                  style: const TextStyle(color: _cApartado, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: 'Monto del abono',
+                  labelStyle: TextStyle(color: tokens.textMuted),
+                  prefixText: '₡ ',
+                  filled: true,
+                  fillColor: cs.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: cs.outline),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: cs.outline),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: cs.primary),
+                  ),
+                ),
               ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Guardar'),
             ),
           ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: _kPrimary),
-            child: const Text('Guardar', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+        );
+      },
     );
     if (ok != true || !mounted) return;
     final monto = double.tryParse(ctrl.text.replaceAll(',', '').trim()) ?? 0;
@@ -243,20 +267,21 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: cs.background,
       appBar: AppBar(
-        title: Text('Pedido #${_order.id}',
-            style: const TextStyle(color: _kText, fontWeight: FontWeight.w700, fontSize: 18)),
-        backgroundColor: _kSurface,
         elevation: 0,
+        title: Text('Pedido #${_order.id}',
+            style: TextStyle(color: cs.onBackground, fontWeight: FontWeight.w700, fontSize: 18)),
+        backgroundColor: cs.surface,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: _kPrimary),
+          icon: Icon(Icons.arrow_back_ios, color: cs.primary),
           onPressed: () => Navigator.pop(context, true),
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: _kPrimary))
+          ? Center(child: CircularProgressIndicator(color: cs.primary))
           : _buildBody(),
       bottomNavigationBar: _buildActionBar(),
     );
@@ -290,6 +315,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
   // ─── Cards ──────────────────────────────────────────────────────────────────
 
   Widget _buildOrderInfoCard() {
+    final cs = Theme.of(context).colorScheme;
     return _Card(
       child: Column(
         children: [
@@ -305,7 +331,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
               trailing: _cancelBadge(_order.cancelBuy)),
           _InfoRow(label: 'Total',
               value: '₡${_fmt.format(_order.totalBuy)}',
-              valueStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _kPrimary)),
+              valueStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: cs.primary)),
           if (_order.totalDelivery > 0)
             _InfoRow(label: 'Envío', value: '₡${_fmt.format(_order.totalDelivery)}'),
           if (_order.totalIva > 0)
@@ -360,14 +386,15 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
   }
 
   Widget _buildItemsSection() {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return _SectionCard(
       icon: Icons.shopping_bag_outlined,
       iconColor: _cVigente,
       title: 'Artículos (${_order.items.length})',
       child: _order.items.isEmpty
-          ? const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Sin artículos', style: TextStyle(color: _kSub)),
+          ? Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Sin artículos', style: TextStyle(color: tokens.textMuted)),
             )
           : Column(
               children: List.generate(_order.items.length, (i) {
@@ -379,6 +406,8 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
   }
 
   Widget _buildGuideSection() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return _SectionCard(
       icon: Icons.pin_outlined,
       title: 'Número de guía',
@@ -391,13 +420,21 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                 controller: _guideCtrl,
                 decoration: InputDecoration(
                   hintText: 'Ej. CR123456789',
-                  hintStyle: const TextStyle(color: _kSub, fontSize: 13),
+                  hintStyle: TextStyle(color: tokens.textMuted, fontSize: 13),
                   filled: true,
-                  fillColor: _kBg,
+                  fillColor: cs.surface,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(color: cs.outline),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: cs.outline),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: cs.primary),
                   ),
                 ),
               ),
@@ -406,7 +443,6 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
             ElevatedButton(
               onPressed: _savingGuide ? null : _saveGuide,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _kPrimary,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -414,7 +450,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                   ? const SizedBox(
                       width: 16, height: 16,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Guardar', style: TextStyle(color: Colors.white)),
+                  : const Text('Guardar'),
             ),
           ],
         ),
@@ -423,6 +459,8 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
   }
 
   Widget _buildNoteSection() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return _SectionCard(
       icon: Icons.notes_outlined,
       title: 'Nota del pedido',
@@ -435,13 +473,21 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
               maxLines: 3,
               decoration: InputDecoration(
                 hintText: 'Agregar una nota interna…',
-                hintStyle: const TextStyle(color: _kSub, fontSize: 13),
+                hintStyle: TextStyle(color: tokens.textMuted, fontSize: 13),
                 filled: true,
-                fillColor: _kBg,
+                fillColor: cs.surface,
                 contentPadding: const EdgeInsets.all(14),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(color: cs.outline),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: cs.outline),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: cs.primary),
                 ),
               ),
             ),
@@ -451,7 +497,6 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
               child: ElevatedButton(
                 onPressed: _savingNote ? null : _saveNote,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _kPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
@@ -459,7 +504,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                     ? const SizedBox(
                         width: 16, height: 16,
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Guardar nota', style: TextStyle(color: Colors.white)),
+                    : const Text('Guardar nota'),
               ),
             ),
           ],
@@ -469,6 +514,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
   }
 
   Widget _buildAbonoSection() {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     final total     = _order.totalBuy;
     final pagado    = _order.montoApartado;
     final pendiente = _order.pendiente;
@@ -499,13 +545,13 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
               child: LinearProgressIndicator(
                 value: pct,
                 minHeight: 6,
-                backgroundColor: const Color(0xFFF0EBE3),
+                backgroundColor: Theme.of(context).colorScheme.outline,
                 color: pendiente > 0 ? _cApartado : _cVigente,
               ),
             ),
             const SizedBox(height: 4),
             Text('${(pct * 100).toStringAsFixed(0)}% pagado',
-                style: const TextStyle(fontSize: 11, color: _kSub)),
+                style: TextStyle(fontSize: 11, color: tokens.textMuted)),
             if (pendiente > 0) ...[
               const SizedBox(height: 14),
               SizedBox(
@@ -531,12 +577,12 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
   // ─── Bottom action bar ───────────────────────────────────────────────────────
 
   Widget _buildActionBar() {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       decoration: BoxDecoration(
-        color: _kSurface,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06),
-            blurRadius: 12, offset: const Offset(0, -2))],
+        color: cs.surface,
+        border: Border(top: BorderSide(color: cs.outline)),
       ),
       child: SafeArea(
         child: Row(
@@ -628,16 +674,17 @@ class _Card extends StatelessWidget {
   const _Card({required this.child});
 
   @override
-  Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          color: _kSurface,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))
-          ],
-        ),
-        child: child,
-      );
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outline),
+      ),
+      child: child,
+    );
+  }
 }
 
 class _SectionCard extends StatelessWidget {
@@ -648,33 +695,34 @@ class _SectionCard extends StatelessWidget {
   const _SectionCard({required this.icon, this.iconColor, required this.title, required this.child});
 
   @override
-  Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          color: _kSurface,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-              child: Row(
-                children: [
-                  Icon(icon, size: 16, color: iconColor ?? _kPrimary),
-                  const SizedBox(width: 8),
-                  Text(title,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: _kText)),
-                ],
-              ),
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Row(
+              children: [
+                Icon(icon, size: 16, color: iconColor ?? cs.primary),
+                const SizedBox(width: 8),
+                Text(title,
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: cs.onBackground)),
+              ],
             ),
-            const Divider(height: 1, color: _kDivider),
-            child,
-          ],
-        ),
-      );
+          ),
+          Divider(height: 1, color: cs.outline),
+          child,
+        ],
+      ),
+    );
+  }
 }
 
 class _InfoRow extends StatelessWidget {
@@ -687,28 +735,32 @@ class _InfoRow extends StatelessWidget {
       this.trailing, this.valueStyle});
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        decoration: BoxDecoration(
-          border: Border(
-            top: isFirst ? BorderSide.none : const BorderSide(color: _kDivider, width: 1),
-          ),
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(
+        border: Border(
+          top: isFirst ? BorderSide.none : BorderSide(color: cs.outline, width: 1),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 13, color: _kSub)),
-            trailing ??
-                Flexible(
-                  child: Text(value,
-                      textAlign: TextAlign.right,
-                      style: valueStyle ??
-                          const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _kText)),
-                ),
-          ],
-        ),
-      );
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(label, style: TextStyle(fontSize: 13, color: tokens.textMuted)),
+          trailing ??
+              Flexible(
+                child: Text(value,
+                    textAlign: TextAlign.right,
+                    style: valueStyle ??
+                        TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onBackground)),
+              ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ItemDetailRow extends StatelessWidget {
@@ -719,10 +771,12 @@ class _ItemDetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        border: isLast ? null : const Border(bottom: BorderSide(color: _kDivider, width: 1)),
+        border: isLast ? null : Border(bottom: BorderSide(color: cs.outline, width: 1)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -733,10 +787,10 @@ class _ItemDetailRow extends StatelessWidget {
                 ? CachedNetworkImage(
                     imageUrl: item.imageUrl!,
                     width: 64, height: 64, fit: BoxFit.cover,
-                    placeholder: (_, __) => _imgPh(),
-                    errorWidget: (_, __, ___) => _imgPh(),
+                    placeholder: (_, __) => _imgPh(tokens),
+                    errorWidget: (_, __, ___) => _imgPh(tokens),
                   )
-                : _imgPh(),
+                : _imgPh(tokens),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -744,7 +798,7 @@ class _ItemDetailRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(item.productName,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _kText)),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: cs.onBackground)),
                 if (item.attributes.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
@@ -754,27 +808,27 @@ class _ItemDetailRow extends StatelessWidget {
                           .map((a) => Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF0EBE3),
+                                  color: cs.outline,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: Text(a, style: const TextStyle(fontSize: 11, color: _kSub)),
+                                child: Text(a, style: TextStyle(fontSize: 11, color: tokens.textMuted)),
                               ))
                           .toList(),
                     ),
                   ),
                 const SizedBox(height: 6),
                 Text('₡${fmt.format(item.total)}',
-                    style: const TextStyle(fontSize: 14, color: _kPrimary, fontWeight: FontWeight.w700)),
+                    style: TextStyle(fontSize: 14, color: cs.primary, fontWeight: FontWeight.w700)),
               ],
             ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text('CANT', style: TextStyle(fontSize: 9, color: _kSub,
+              Text('CANT', style: TextStyle(fontSize: 9, color: tokens.textMuted,
                   fontWeight: FontWeight.w700, letterSpacing: 0.5)),
               Text('${item.quantity}',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: _kText)),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: cs.onBackground)),
             ],
           ),
         ],
@@ -782,10 +836,10 @@ class _ItemDetailRow extends StatelessWidget {
     );
   }
 
-  Widget _imgPh() => Container(
+  Widget _imgPh(AppTokens tokens) => Container(
         width: 64, height: 64,
-        decoration: BoxDecoration(color: const Color(0xFFF0EBE3), borderRadius: BorderRadius.circular(10)),
-        child: const Icon(Icons.shopping_bag_outlined, color: _kAccent, size: 26),
+        decoration: BoxDecoration(color: tokens.surfaceAlt, borderRadius: BorderRadius.circular(10)),
+        child: Icon(Icons.shopping_bag_outlined, color: tokens.textSubtle, size: 26),
       );
 }
 
@@ -797,16 +851,20 @@ class _AbonoStat extends StatelessWidget {
   const _AbonoStat({required this.label, required this.value, required this.fmt, this.color});
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: _kSub)),
-          Text('₡${fmt.format(value)}',
-              style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w800,
-                  color: color ?? _kText)),
-        ],
-      );
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 11, color: tokens.textMuted)),
+        Text('₡${fmt.format(value)}',
+            style: TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w800,
+                color: color ?? cs.onBackground)),
+      ],
+    );
+  }
 }
 
 class _ActionToggle extends StatelessWidget {
@@ -822,31 +880,35 @@ class _ActionToggle extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Expanded(
-        child: GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: active ? activeColor.withOpacity(0.12) : _kBg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: active ? activeColor.withOpacity(0.4) : const Color(0xFFE8DDD3)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(active ? activeIcon : icon,
-                    size: 20, color: active ? activeColor : _kSub),
-                const SizedBox(height: 3),
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 10, fontWeight: FontWeight.w600,
-                        color: active ? activeColor : _kSub)),
-              ],
-            ),
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: active ? activeColor.withOpacity(0.12) : cs.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: active ? activeColor.withOpacity(0.4) : cs.outline),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(active ? activeIcon : icon,
+                  size: 20, color: active ? activeColor : tokens.textMuted),
+              const SizedBox(height: 3),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 10, fontWeight: FontWeight.w600,
+                      color: active ? activeColor : tokens.textMuted)),
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
 }

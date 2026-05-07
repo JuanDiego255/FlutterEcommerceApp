@@ -1,10 +1,6 @@
 import 'package:ecommerce_flutter/src/domain/models/User.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-
-const _kAccent  = Color(0xFF8B6F47);
-const _kPrimary = Color(0xFF2D2D2D);
-const _kSub     = Color(0xFF757575);
-const _kBg      = Color(0xFFFAFAFA);
 
 class ProfileInfoContent extends StatelessWidget {
   final User? user;
@@ -12,16 +8,17 @@ class ProfileInfoContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Scaffold(
-      backgroundColor: _kBg,
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHeader(context),
+            _buildHeader(context, cs),
             const SizedBox(height: 16),
-            _buildInfoCard(context),
+            _buildInfoCard(context, cs, tokens),
             const SizedBox(height: 16),
-            _buildActionsCard(context),
+            _buildActionsCard(context, cs, tokens),
             const SizedBox(height: 24),
           ],
         ),
@@ -29,16 +26,16 @@ class ProfileInfoContent extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, ColorScheme cs) {
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF6B4F30), _kAccent],
+          colors: [AppColors.bg, const Color(0xFF1C1400), cs.primary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       child: SafeArea(
         bottom: false,
@@ -46,7 +43,6 @@ class ProfileInfoContent extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
           child: Column(
             children: [
-              // Avatar
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
@@ -56,12 +52,6 @@ class ProfileInfoContent extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: const [
-                        BoxShadow(
-                            color: Color(0x30000000),
-                            blurRadius: 12,
-                            offset: Offset(0, 4)),
-                      ],
                     ),
                     child: ClipOval(
                       child: user?.image != null && user!.image!.isNotEmpty
@@ -82,11 +72,11 @@ class ProfileInfoContent extends StatelessWidget {
                     child: Container(
                       width: 28,
                       height: 28,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
+                      decoration: BoxDecoration(
+                        color: cs.primary,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.edit, size: 14, color: _kAccent),
+                      child: Icon(Icons.edit, size: 14, color: cs.onPrimary),
                     ),
                   ),
                 ],
@@ -113,7 +103,6 @@ class ProfileInfoContent extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 12),
-              // Role badge
               if (user?.roles?.isNotEmpty ?? false)
                 Container(
                   padding:
@@ -121,8 +110,7 @@ class ProfileInfoContent extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: Colors.white.withOpacity(0.4)),
+                    border: Border.all(color: Colors.white.withOpacity(0.4)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -147,16 +135,14 @@ class ProfileInfoContent extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoCard(BuildContext context) {
+  Widget _buildInfoCard(BuildContext context, ColorScheme cs, AppTokens tokens) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(color: Color(0x0C000000), blurRadius: 10, offset: Offset(0, 2)),
-          ],
+          border: Border.all(color: cs.outline),
         ),
         child: Column(
           children: [
@@ -166,18 +152,21 @@ class ProfileInfoContent extends StatelessWidget {
               '${user?.name ?? ''} ${user?.lastname ?? ''}'.trim().isNotEmpty
                   ? '${user?.name ?? ''} ${user?.lastname ?? ''}'.trim()
                   : 'No especificado',
+              cs, tokens,
             ),
-            const Divider(color: Color(0xFFEEEEEE), height: 1, indent: 16, endIndent: 16),
+            Divider(color: cs.outline, height: 1, indent: 16, endIndent: 16),
             _buildInfoTile(
               Icons.email_outlined,
               'Correo electrónico',
               user?.email?.isNotEmpty ?? false ? user!.email! : 'No especificado',
+              cs, tokens,
             ),
-            const Divider(color: Color(0xFFEEEEEE), height: 1, indent: 16, endIndent: 16),
+            Divider(color: cs.outline, height: 1, indent: 16, endIndent: 16),
             _buildInfoTile(
               Icons.phone_outlined,
               'Teléfono',
               user?.phone.isNotEmpty ?? false ? user!.phone : 'No especificado',
+              cs, tokens,
             ),
             const SizedBox(height: 8),
             Padding(
@@ -186,8 +175,8 @@ class ProfileInfoContent extends StatelessWidget {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: _kAccent),
-                    foregroundColor: _kAccent,
+                    side: BorderSide(color: cs.primary),
+                    foregroundColor: cs.primary,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
@@ -207,40 +196,39 @@ class ProfileInfoContent extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoTile(IconData icon, String label, String value) {
+  Widget _buildInfoTile(IconData icon, String label, String value,
+      ColorScheme cs, AppTokens tokens) {
     return ListTile(
       leading: Container(
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: _kAccent.withOpacity(0.1),
+          color: cs.primary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: _kAccent, size: 18),
+        child: Icon(icon, color: cs.primary, size: 18),
       ),
       title: Text(
         label,
-        style: const TextStyle(fontSize: 11, color: _kSub),
+        style: TextStyle(fontSize: 11, color: tokens.textMuted),
       ),
       subtitle: Text(
         value,
-        style: const TextStyle(
-            fontSize: 14, color: _kPrimary, fontWeight: FontWeight.w500),
+        style: TextStyle(
+            fontSize: 14, color: cs.onBackground, fontWeight: FontWeight.w500),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     );
   }
 
-  Widget _buildActionsCard(BuildContext context) {
+  Widget _buildActionsCard(BuildContext context, ColorScheme cs, AppTokens tokens) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(color: Color(0x0C000000), blurRadius: 10, offset: Offset(0, 2)),
-          ],
+          border: Border.all(color: cs.outline),
         ),
         child: Column(
           children: [
@@ -248,28 +236,31 @@ class ProfileInfoContent extends StatelessWidget {
               context,
               Icons.privacy_tip_outlined,
               'Política de Privacidad',
+              cs, tokens,
               onTap: () => Navigator.pushNamed(
                 context, 'legal',
                 arguments: {'type': 'privacy', 'title': 'Política de Privacidad'},
               ),
             ),
-            const Divider(color: Color(0xFFEEEEEE), height: 1, indent: 16, endIndent: 16),
+            Divider(color: cs.outline, height: 1, indent: 16, endIndent: 16),
             _buildActionTile(
               context,
               Icons.description_outlined,
               'Términos y Condiciones',
+              cs, tokens,
               onTap: () => Navigator.pushNamed(
                 context, 'legal',
                 arguments: {'type': 'terms', 'title': 'Términos y Condiciones'},
               ),
             ),
-            const Divider(color: Color(0xFFEEEEEE), height: 1, indent: 16, endIndent: 16),
+            Divider(color: cs.outline, height: 1, indent: 16, endIndent: 16),
             _buildActionTile(
               context,
               Icons.logout,
               'Cerrar sesión',
-              color: Colors.red,
-              onTap: () => _confirmLogout(context),
+              cs, tokens,
+              color: cs.error,
+              onTap: () => _confirmLogout(context, cs, tokens),
             ),
           ],
         ),
@@ -280,11 +271,13 @@ class ProfileInfoContent extends StatelessWidget {
   Widget _buildActionTile(
     BuildContext context,
     IconData icon,
-    String label, {
+    String label,
+    ColorScheme cs,
+    AppTokens tokens, {
     Color? color,
     required VoidCallback onTap,
   }) {
-    final c = color ?? _kPrimary;
+    final c = color ?? cs.onBackground;
     return ListTile(
       leading: Container(
         width: 36,
@@ -299,33 +292,35 @@ class ProfileInfoContent extends StatelessWidget {
         label,
         style: TextStyle(fontSize: 14, color: c, fontWeight: FontWeight.w500),
       ),
-      trailing: const Icon(Icons.chevron_right, size: 18, color: Color(0xFFBDBDBD)),
+      trailing: Icon(Icons.chevron_right, size: 18, color: tokens.textSubtle),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       onTap: onTap,
     );
   }
 
-  void _confirmLogout(BuildContext context) {
+  void _confirmLogout(BuildContext context, ColorScheme cs, AppTokens tokens) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: cs.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Cerrar sesión',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-        content: const Text('¿Estás seguro que querés cerrar sesión?'),
+        title: Text('Cerrar sesión',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: cs.onBackground)),
+        content: Text('¿Estás seguro que querés cerrar sesión?',
+            style: TextStyle(color: tokens.textMuted)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar', style: TextStyle(color: _kSub)),
+            child: Text('Cancelar', style: TextStyle(color: tokens.textMuted)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: cs.error,
+              foregroundColor: cs.onError,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () {
               Navigator.pop(ctx);
-              // Navigate back to catalog
               Navigator.pushNamedAndRemoveUntil(
                   context, 'catalog/home', (route) => false);
             },

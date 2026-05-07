@@ -1,6 +1,7 @@
 import 'package:ecommerce_flutter/src/data/dataSource/local/CartNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/domain/models/TenantConfig.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 // ─── Tenant registry ─────────────────────────────────────────────────────────
@@ -57,15 +58,6 @@ const _kTenants = [
   ),
 ];
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-
-const _kPrimary = Color(0xFF2D2D2D);
-const _kAccent  = Color(0xFF8B6F47);
-const _kBg      = Color(0xFFFAFAFA);
-const _kCard    = Colors.white;
-const _kSub     = Color(0xFF757575);
-const _kDivider = Color(0xFFEEEEEE);
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 class TenantSelectPage extends StatefulWidget {
@@ -90,24 +82,25 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: cs.background,
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(),
+            _buildHeader(cs),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildDropdown(),
+                    _buildDropdown(cs),
                     if (_selected != null) ...[
                       const SizedBox(height: 16),
-                      _buildPreviewCard(_selected!),
+                      _buildPreviewCard(_selected!, cs),
                       const SizedBox(height: 24),
-                      _buildEnterButton(),
+                      _buildEnterButton(cs),
                     ],
                   ],
                 ),
@@ -121,17 +114,17 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
 
   // ─── Header ──────────────────────────────────────────────────────────────
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ColorScheme cs) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 36, 24, 32),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF6B4F30), _kAccent],
+          colors: [AppColors.bg, const Color(0xFF1C1400), cs.primary],
         ),
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(32),
           bottomRight: Radius.circular(32),
         ),
@@ -170,15 +163,13 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
 
   // ─── Dropdown ────────────────────────────────────────────────────────────
 
-  Widget _buildDropdown() {
+  Widget _buildDropdown(ColorScheme cs) {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Container(
       decoration: BoxDecoration(
-        color: _kCard,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _kDivider),
-        boxShadow: const [
-          BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 2)),
-        ],
+        border: Border.all(color: cs.outline),
       ),
       child: DropdownButtonHideUnderline(
         child: ButtonTheme(
@@ -186,16 +177,17 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
           child: DropdownButton<_Tenant>(
             value: _selected,
             isExpanded: true,
-            hint: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4),
+            dropdownColor: cs.surface,
+            hint: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
                 'Elegí una tienda...',
-                style: TextStyle(color: _kSub, fontSize: 14),
+                style: TextStyle(color: tokens.textMuted, fontSize: 14),
               ),
             ),
-            icon: const Padding(
-              padding: EdgeInsets.only(right: 4),
-              child: Icon(Icons.keyboard_arrow_down_rounded, color: _kSub),
+            icon: Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Icon(Icons.keyboard_arrow_down_rounded, color: tokens.textMuted),
             ),
             borderRadius: BorderRadius.circular(14),
             items: _kTenants.map((t) {
@@ -207,7 +199,7 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: t.color.withOpacity(0.1),
+                        color: t.color.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(t.icon, color: t.color, size: 18),
@@ -216,10 +208,10 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
                     Expanded(
                       child: Text(
                         t.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: _kPrimary,
+                          color: cs.onBackground,
                         ),
                       ),
                     ),
@@ -236,7 +228,8 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
 
   // ─── Preview card ─────────────────────────────────────────────────────────
 
-  Widget _buildPreviewCard(_Tenant t) {
+  Widget _buildPreviewCard(_Tenant t, ColorScheme cs) {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 280),
       transitionBuilder: (child, anim) => FadeTransition(
@@ -252,15 +245,12 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
       child: Container(
         key: ValueKey(t.domain),
         decoration: BoxDecoration(
-          color: _kCard,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
-            BoxShadow(color: Color(0x10000000), blurRadius: 16, offset: Offset(0, 4)),
-          ],
+          border: Border.all(color: cs.outline),
         ),
         child: Column(
           children: [
-            // Colored top band
             Container(
               height: 6,
               decoration: BoxDecoration(
@@ -276,7 +266,7 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: t.color.withOpacity(0.1),
+                      color: t.color.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(t.icon, color: t.color, size: 30),
@@ -288,27 +278,27 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
                       children: [
                         Text(
                           t.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
-                            color: _kPrimary,
+                            color: cs.onBackground,
                           ),
                         ),
                         const SizedBox(height: 3),
                         Text(
                           t.subtitle,
-                          style: const TextStyle(fontSize: 13, color: _kSub),
+                          style: TextStyle(fontSize: 13, color: tokens.textMuted),
                         ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            const Icon(Icons.location_on_outlined, size: 14, color: _kAccent),
+                            Icon(Icons.location_on_outlined, size: 14, color: cs.primary),
                             const SizedBox(width: 4),
                             Text(
                               t.location,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: _kAccent,
+                                color: cs.primary,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -328,24 +318,18 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
 
   // ─── Enter button ─────────────────────────────────────────────────────────
 
-  Widget _buildEnterButton() {
+  Widget _buildEnterButton(ColorScheme cs) {
     return SizedBox(
       height: 52,
       child: ElevatedButton(
         onPressed: _loading ? null : _enter,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _kAccent,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
         child: _loading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                  color: cs.onPrimary,
                 ),
               )
             : Row(

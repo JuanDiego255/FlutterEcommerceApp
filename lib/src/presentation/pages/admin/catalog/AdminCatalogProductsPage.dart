@@ -5,19 +5,10 @@ import 'package:ecommerce_flutter/src/domain/models/MitaiProduct.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/admin/catalog/AdminProductDetailPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/admin/catalog/AdminProductFormPage.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-const Color _kBg         = Color(0xFFFAF8F5);
-const Color _kPrimary    = Color(0xFF8B6F47);
-const Color _kAccent     = Color(0xFFC8966A);
-const Color _kSurface    = Color(0xFFFFFFFF);
-const Color _kTextPrimary   = Color(0xFF1A1A1A);
-const Color _kTextSecondary = Color(0xFF6B6B6B);
-const Color _kStockOk    = Color(0xFF22C55E);
-const Color _kStockLow   = Color(0xFFF59E0B);
-const Color _kStockOut   = Color(0xFFEF4444);
 
 class AdminCatalogProductsPage extends StatefulWidget {
   final int categoryId;
@@ -38,14 +29,11 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
   final _currencyFmt   = NumberFormat('#,###', 'es');
   final _searchCtrl    = TextEditingController();
 
-  // Full product list (current page)
   List<MitaiProduct> _products = [];
 
-  // Filters
   String _search      = '';
   String? _attrFilter;
 
-  // Pagination
   bool _loading    = true;
   bool _loadingMore = false;
   String? _error;
@@ -54,7 +42,6 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
   int  _total       = 0;
   static const _perPage = 15;
 
-  // Attributes derived from loaded products
   List<String> _availableAttrs = [];
 
   @override
@@ -96,7 +83,6 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
       final list  = MitaiProduct.fromJsonList(data['data'] as List<dynamic>? ?? []);
       final pag   = data['pagination'] as Map<String, dynamic>? ?? {};
 
-      // Collect unique attribute names for filter chips
       final attrSet = <String>{};
       for (final p in list) {
         attrSet.addAll(p.attrList.where((a) => a.isNotEmpty));
@@ -167,20 +153,25 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
   }
 
   Future<void> _confirmDelete(MitaiProduct product) async {
+    final cs = Theme.of(context).colorScheme;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Eliminar producto'),
-        content: Text('¿Eliminar "${product.name}"? Esta acción no se puede deshacer.'),
+        backgroundColor: cs.surface,
+        title: Text('Eliminar producto',
+            style: TextStyle(color: cs.onBackground, fontWeight: FontWeight.w700)),
+        content: Text('¿Eliminar "${product.name}"? Esta acción no se puede deshacer.',
+            style: TextStyle(color: Theme.of(context).extension<AppTokens>()!.textMuted)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _kStockOut),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: cs.error, foregroundColor: cs.onError),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+            child: const Text('Eliminar'),
           ),
         ],
       ),
@@ -199,10 +190,11 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
       );
       _loadData(reset: true);
     } else if (result is Error<bool>) {
+      final cs2 = Theme.of(context).colorScheme;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${(result).message}'),
-          backgroundColor: _kStockOut,
+          backgroundColor: cs2.error,
           duration: const Duration(seconds: 4),
           behavior: SnackBarBehavior.floating,
         ),
@@ -212,20 +204,15 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: _kBg,
       appBar: AppBar(
-        title: Text(widget.categoryName,
-            style: const TextStyle(color: _kTextPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: _kSurface,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: _kPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        title: Text(widget.categoryName,
+            style: TextStyle(color: cs.onBackground, fontWeight: FontWeight.bold, fontSize: 18)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.open_in_browser, color: _kPrimary),
+            icon: Icon(Icons.open_in_browser, color: cs.primary),
             tooltip: 'Gestionar en web',
             onPressed: () => launchUrl(
               Uri.https(TenantSession.host, '/categories/${widget.categoryId}'),
@@ -236,22 +223,22 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
-        backgroundColor: _kPrimary,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add),
       ),
       body: Column(
         children: [
-          _buildSearchBar(),
-          if (_availableAttrs.isNotEmpty) _buildAttrFilter(),
-          Expanded(child: _buildBody()),
+          _buildSearchBar(cs),
+          if (_availableAttrs.isNotEmpty) _buildAttrFilter(cs),
+          Expanded(child: _buildBody(cs)),
         ],
       ),
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(ColorScheme cs) {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Container(
-      color: _kSurface,
+      color: cs.surface,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: TextField(
         controller: _searchCtrl,
@@ -259,19 +246,19 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
           if (v.length >= 2 || v.isEmpty) _onSearch(v);
         },
         onSubmitted: _onSearch,
-        style: const TextStyle(fontSize: 14, color: _kTextPrimary),
+        style: TextStyle(fontSize: 14, color: cs.onBackground),
         decoration: InputDecoration(
           hintText: 'Buscar por nombre o código...',
-          hintStyle: const TextStyle(color: _kTextSecondary, fontSize: 13),
-          prefixIcon: const Icon(Icons.search, color: _kPrimary, size: 20),
+          hintStyle: TextStyle(color: tokens.textMuted, fontSize: 13),
+          prefixIcon: Icon(Icons.search, color: cs.primary, size: 20),
           suffixIcon: _search.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear, color: _kTextSecondary, size: 18),
+                  icon: Icon(Icons.clear, color: tokens.textMuted, size: 18),
                   onPressed: _clearSearch,
                 )
               : null,
           filled: true,
-          fillColor: const Color(0xFFF0EBE3),
+          fillColor: cs.background,
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         ),
@@ -279,9 +266,9 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
     );
   }
 
-  Widget _buildAttrFilter() {
+  Widget _buildAttrFilter(ColorScheme cs) {
     return Container(
-      color: _kSurface,
+      color: cs.surface,
       height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
@@ -294,8 +281,8 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
               label: const Text('Todos', style: TextStyle(fontSize: 11)),
               selected: _attrFilter == null,
               onSelected: (_) => setState(() => _attrFilter = null),
-              selectedColor: _kPrimary,
-              labelStyle: TextStyle(color: _attrFilter == null ? Colors.white : _kTextPrimary),
+              selectedColor: cs.primary,
+              labelStyle: TextStyle(color: _attrFilter == null ? cs.onPrimary : cs.onBackground),
               side: BorderSide.none,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             );
@@ -303,11 +290,11 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
           final attr = _availableAttrs[i - 1];
           final sel  = _attrFilter == attr;
           return FilterChip(
-            label: Text(attr, style: TextStyle(fontSize: 11, color: sel ? Colors.white : _kTextPrimary)),
+            label: Text(attr, style: TextStyle(fontSize: 11, color: sel ? cs.onPrimary : cs.onBackground)),
             selected: sel,
             onSelected: (_) => setState(() => _attrFilter = sel ? null : attr),
-            selectedColor: _kPrimary,
-            backgroundColor: const Color(0xFFF0EBE3),
+            selectedColor: cs.primary,
+            backgroundColor: Theme.of(context).extension<AppTokens>()!.surfaceAlt,
             side: BorderSide.none,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           );
@@ -316,24 +303,24 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(ColorScheme cs) {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: _kPrimary));
+      return Center(child: CircularProgressIndicator(color: cs.primary));
     }
     if (_error != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
+            Icon(Icons.error_outline, size: 64, color: cs.error),
             const SizedBox(height: 16),
             Text(_error!, textAlign: TextAlign.center,
-                style: const TextStyle(color: _kTextSecondary)),
+                style: TextStyle(color: tokens.textMuted)),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => _loadData(reset: true),
-              style: ElevatedButton.styleFrom(backgroundColor: _kPrimary),
-              child: const Text('Reintentar', style: TextStyle(color: Colors.white)),
+              child: const Text('Reintentar'),
             ),
           ],
         ),
@@ -345,12 +332,12 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.search_off, size: 56, color: _kAccent),
+            Icon(Icons.search_off, size: 56, color: tokens.textSubtle),
             const SizedBox(height: 12),
             Text(
               _search.isNotEmpty ? 'Sin resultados para "$_search"' : 'No hay productos en esta categoría',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: _kTextSecondary),
+              style: TextStyle(color: tokens.textMuted),
             ),
           ],
         ),
@@ -359,24 +346,23 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
 
     return Column(
       children: [
-        // Total count
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Row(
             children: [
               Text('$_total producto${_total == 1 ? '' : 's'}',
-                  style: const TextStyle(color: _kTextSecondary, fontSize: 12)),
+                  style: TextStyle(color: tokens.textMuted, fontSize: 12)),
               const Spacer(),
               if (_search.isNotEmpty)
                 Text('Mostrando ${visible.length} resultado${visible.length == 1 ? '' : 's'}',
-                    style: const TextStyle(color: _kPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
+                    style: TextStyle(color: cs.primary, fontSize: 12, fontWeight: FontWeight.w600)),
             ],
           ),
         ),
         Expanded(
           child: RefreshIndicator(
             onRefresh: () => _loadData(reset: true),
-            color: _kPrimary,
+            color: cs.primary,
             child: GridView.builder(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -388,14 +374,13 @@ class _AdminCatalogProductsPageState extends State<AdminCatalogProductsPage> {
               itemCount: visible.length + (_currentPage < _lastPage ? 1 : 0),
               itemBuilder: (context, index) {
                 if (index == visible.length) {
-                  // Load more trigger
                   if (!_loadingMore) {
                     WidgetsBinding.instance.addPostFrameCallback((_) => _loadMore());
                   }
-                  return const Center(
+                  return Center(
                       child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: CircularProgressIndicator(color: _kPrimary, strokeWidth: 2)));
+                          padding: const EdgeInsets.all(16),
+                          child: CircularProgressIndicator(color: cs.primary, strokeWidth: 2)));
                 }
                 final product = visible[index];
                 return _ProductCard(
@@ -442,27 +427,27 @@ class _ProductCard extends StatelessWidget {
     required this.onDelete,
   });
 
-  Color _stockColor(int? stock) {
-    if (stock == null || stock == 0) return _kStockOut;
-    if (stock <= 5) return _kStockLow;
-    return _kStockOk;
+  Color _stockColor(int? stock, ColorScheme cs, AppTokens tokens) {
+    if (stock == null || stock == 0) return cs.error;
+    if (stock <= 5) return tokens.warning;
+    return tokens.success;
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: _kSurface,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06),
-              blurRadius: 8, offset: const Offset(0, 3))],
+          border: Border.all(color: cs.outline),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Image
             SizedBox(
               height: 130,
               child: ClipRRect(
@@ -475,13 +460,12 @@ class _ProductCard extends StatelessWidget {
                             fit: BoxFit.cover,
                             width: double.infinity,
                             height: 130,
-                            placeholder: (_, __) => Container(color: const Color(0xFFF0EBE3),
-                                child: const Center(child: CircularProgressIndicator(
-                                    color: _kAccent, strokeWidth: 2))),
-                            errorWidget: (_, __, ___) => _placeholder(),
+                            placeholder: (_, __) => Container(color: tokens.surfaceAlt,
+                                child: Center(child: CircularProgressIndicator(
+                                    color: cs.primary, strokeWidth: 2))),
+                            errorWidget: (_, __, ___) => _placeholder(tokens),
                           )
-                        : _placeholder(),
-                    // Delete button overlay
+                        : _placeholder(tokens),
                     Positioned(
                       top: 4, left: 4,
                       child: GestureDetector(
@@ -489,15 +473,13 @@ class _ProductCard extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
+                            color: cs.surface.withOpacity(0.9),
                             shape: BoxShape.circle,
-                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
                           ),
-                          child: const Icon(Icons.delete_outline, size: 14, color: _kStockOut),
+                          child: Icon(Icons.delete_outline, size: 14, color: cs.error),
                         ),
                       ),
                     ),
-                    // Edit button overlay
                     Positioned(
                       top: 4, right: 4,
                       child: GestureDetector(
@@ -505,11 +487,10 @@ class _ProductCard extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
+                            color: cs.surface.withOpacity(0.9),
                             shape: BoxShape.circle,
-                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
                           ),
-                          child: const Icon(Icons.edit, size: 14, color: _kPrimary),
+                          child: Icon(Icons.edit, size: 14, color: cs.primary),
                         ),
                       ),
                     ),
@@ -524,26 +505,26 @@ class _ProductCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(product.name,
-                        style: const TextStyle(color: _kTextPrimary,
+                        style: TextStyle(color: cs.onBackground,
                             fontWeight: FontWeight.bold, fontSize: 12),
                         maxLines: 2, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
                     Text('₡${currencyFormat.format(product.price)}',
-                        style: const TextStyle(color: _kPrimary,
+                        style: TextStyle(color: cs.primary,
                             fontWeight: FontWeight.w700, fontSize: 13)),
                     const Spacer(),
                     if (product.manageStock == 1)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: _stockColor(product.totalStock).withOpacity(0.15),
+                          color: _stockColor(product.totalStock, cs, tokens).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           product.totalStock != null
                               ? 'Stock: ${product.totalStock}'
                               : 'Sin stock',
-                          style: TextStyle(color: _stockColor(product.totalStock),
+                          style: TextStyle(color: _stockColor(product.totalStock, cs, tokens),
                               fontSize: 10, fontWeight: FontWeight.w600),
                         ),
                       ),
@@ -554,11 +535,11 @@ class _ProductCard extends StatelessWidget {
                         children: product.attrList.take(2).map((attr) => Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF0EBE3),
+                            color: tokens.surfaceAlt,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(attr.trim(),
-                              style: const TextStyle(color: _kAccent,
+                              style: TextStyle(color: cs.primary,
                                   fontSize: 9, fontWeight: FontWeight.w500)),
                         )).toList(),
                       ),
@@ -573,11 +554,11 @@ class _ProductCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholder() {
+  Widget _placeholder(AppTokens tokens) {
     return Container(
-      color: const Color(0xFFF0EBE3),
-      child: const Center(
-          child: Icon(Icons.inventory_2_outlined, size: 40, color: _kAccent)),
+      color: tokens.surfaceAlt,
+      child: Center(
+          child: Icon(Icons.inventory_2_outlined, size: 40, color: tokens.textSubtle)),
     );
   }
 }

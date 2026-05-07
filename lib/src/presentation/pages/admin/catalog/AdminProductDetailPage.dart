@@ -5,18 +5,13 @@ import 'package:ecommerce_flutter/src/domain/models/MitaiProduct.dart';
 import 'package:ecommerce_flutter/src/domain/models/ProductVariant.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/admin/catalog/AdminProductFormPage.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 
-const Color _kBg = Color(0xFFFAF8F5);
-const Color _kPrimary = Color(0xFF8B6F47);
-const Color _kAccent = Color(0xFFC8966A);
-const Color _kSurface = Color(0xFFFFFFFF);
-const Color _kTextPrimary = Color(0xFF1A1A1A);
-const Color _kTextSecondary = Color(0xFF6B6B6B);
-const Color _kStockOk = Color(0xFF22C55E);
+const Color _kStockOk  = Color(0xFF22C55E);
 const Color _kStockLow = Color(0xFFF59E0B);
 const Color _kStockOut = Color(0xFFEF4444);
 
@@ -123,9 +118,10 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final p = widget.product;
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: cs.background,
       body: CustomScrollView(
         slivers: [
           _buildAppBar(p),
@@ -138,17 +134,15 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
           FloatingActionButton(
             heroTag: 'edit',
             onPressed: _openEditForm,
-            backgroundColor: Colors.white,
             elevation: 2,
             mini: true,
             tooltip: 'Editar producto',
-            child: const Icon(Icons.edit_outlined, color: _kPrimary, size: 20),
+            child: const Icon(Icons.edit_outlined, size: 20),
           ),
           const SizedBox(height: 10),
           FloatingActionButton.extended(
             heroTag: 'share',
             onPressed: _sharing ? null : _shareProductCard,
-            backgroundColor: _kPrimary,
             icon: _sharing
                 ? const SizedBox(
                     width: 18,
@@ -156,10 +150,9 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
                     child: CircularProgressIndicator(
                         color: Colors.white, strokeWidth: 2),
                   )
-                : const Icon(Icons.share_outlined, color: Colors.white),
+                : const Icon(Icons.share_outlined),
             label: Text(
               _sharing ? 'Generando...' : 'Compartir',
-              style: const TextStyle(color: Colors.white),
             ),
           ),
         ],
@@ -168,18 +161,19 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
   }
 
   Widget _buildAppBar(MitaiProduct p) {
+    final cs = Theme.of(context).colorScheme;
     return SliverAppBar(
       expandedHeight: 280,
       pinned: true,
-      backgroundColor: _kSurface,
+      backgroundColor: cs.surface,
       leading: IconButton(
         icon: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.85),
+            color: cs.surface.withOpacity(0.85),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.arrow_back_ios, size: 16, color: _kPrimary),
+          child: Icon(Icons.arrow_back_ios, size: 16, color: cs.primary),
         ),
         onPressed: () => Navigator.pop(context),
       ),
@@ -197,10 +191,12 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
   }
 
   Widget _imagePlaceholder() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Container(
-      color: const Color(0xFFF0EBE3),
-      child: const Center(
-          child: Icon(Icons.inventory_2_outlined, size: 64, color: _kAccent)),
+      color: tokens.surfaceAlt,
+      child: Center(
+          child: Icon(Icons.inventory_2_outlined, size: 64, color: tokens.textSubtle)),
     );
   }
 
@@ -225,6 +221,8 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
   }
 
   Widget _buildHeader(MitaiProduct p) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -234,10 +232,10 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
             Expanded(
               child: Text(
                 p.name,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
-                    color: _kTextPrimary,
+                    color: cs.onBackground,
                     height: 1.2),
               ),
             ),
@@ -248,9 +246,9 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
         if (p.code != null && p.code!.isNotEmpty) ...[
           const SizedBox(height: 6),
           Text('Código: ${p.code}',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12,
-                  color: _kTextSecondary,
+                  color: tokens.textMuted,
                   fontFamily: 'monospace')),
         ],
         const SizedBox(height: 12),
@@ -258,17 +256,17 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text('₡${_fmt.format(p.price)}',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w700,
-                    color: _kPrimary)),
+                    color: cs.primary)),
             if (p.mayorPrice != null && p.mayorPrice! > 0) ...[
               const SizedBox(width: 12),
               Padding(
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Text('Mayoreo: ₡${_fmt.format(p.mayorPrice)}',
-                    style: const TextStyle(
-                        fontSize: 13, color: _kTextSecondary)),
+                    style: TextStyle(
+                        fontSize: 13, color: tokens.textMuted)),
               ),
             ],
           ],
@@ -278,12 +276,12 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFFEF4444).withOpacity(0.12),
+              color: cs.error.withOpacity(0.12),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text('${p.discount}% descuento',
-                style: const TextStyle(
-                    color: Color(0xFFEF4444),
+                style: TextStyle(
+                    color: cs.error,
                     fontSize: 12,
                     fontWeight: FontWeight.w600)),
           ),
@@ -293,9 +291,10 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
   }
 
   Widget _stockChip(MitaiProduct p) {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
+    final cs = Theme.of(context).colorScheme;
     if (p.manageStock == 0) {
-      return _chip('Sin control', const Color(0xFF6B6B6B),
-          const Color(0xFFF0F0F0));
+      return _chip('Sin control', tokens.textMuted, tokens.surfaceAlt);
     }
     final s = p.totalStock ?? 0;
     if (s <= 0) return _chip('Agotado', _kStockOut, _kStockOut.withOpacity(0.12));
@@ -315,16 +314,12 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
   }
 
   Widget _buildInfoCard(MitaiProduct p) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: _kSurface,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2))
-        ],
+        border: Border.all(color: cs.outline),
       ),
       child: Column(
         children: [
@@ -342,13 +337,15 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
 
   Widget _infoRow(String label, String value,
       {bool isFirst = false}) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         border: Border(
           top: isFirst
               ? BorderSide.none
-              : const BorderSide(color: Color(0xFFF0EBE3), width: 1),
+              : BorderSide(color: cs.outline, width: 1),
         ),
       ),
       child: Row(
@@ -356,125 +353,114 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
         children: [
           Text(label,
               style:
-                  const TextStyle(fontSize: 13, color: _kTextSecondary)),
+                  TextStyle(fontSize: 13, color: tokens.textMuted)),
           Text(value,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: _kTextPrimary)),
+                  color: cs.onBackground)),
         ],
       ),
     );
   }
 
   Widget _buildDescriptionCard(MitaiProduct p) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _kSurface,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2))
-        ],
+        border: Border.all(color: cs.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Descripción',
+          Text('Descripción',
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: _kTextPrimary)),
+                  color: cs.onBackground)),
           const SizedBox(height: 8),
           Text(p.description!,
-              style: const TextStyle(
-                  fontSize: 13, color: _kTextSecondary, height: 1.5)),
+              style: TextStyle(
+                  fontSize: 13, color: tokens.textMuted, height: 1.5)),
         ],
       ),
     );
   }
 
   Widget _buildVariantsSection() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Text('Variantes',
+            Text('Variantes',
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: _kTextPrimary)),
+                    color: cs.onBackground)),
             if (!_loadingVariants) ...[
               const SizedBox(width: 8),
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: _kPrimary.withOpacity(0.12),
+                  color: cs.primary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text('${_variants.length}',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: _kPrimary)),
+                        color: cs.primary)),
               ),
             ],
           ],
         ),
         const SizedBox(height: 12),
         if (_loadingVariants)
-          const Center(
+          Center(
               child: Padding(
-                  padding: EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(24),
                   child: CircularProgressIndicator(
-                      color: _kPrimary, strokeWidth: 2)))
+                      color: cs.primary, strokeWidth: 2)))
         else if (_variants.isEmpty)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: _kSurface,
+              color: cs.surface,
               borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2))
-              ],
+              border: Border.all(color: cs.outline),
             ),
-            child: const Text('Sin variantes registradas',
+            child: Text('Sin variantes registradas',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: _kTextSecondary, fontSize: 13)),
+                style: TextStyle(color: tokens.textMuted, fontSize: 13)),
           )
         else
           Container(
             decoration: BoxDecoration(
-              color: _kSurface,
+              color: cs.surface,
               borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2))
-              ],
+              border: Border.all(color: cs.outline),
             ),
             child: Column(
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 10),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF5EDE0),
+                  decoration: BoxDecoration(
+                    color: tokens.surfaceAlt,
                     borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(14)),
+                        const BorderRadius.vertical(top: Radius.circular(14)),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       Expanded(
                           flex: 4,
@@ -482,7 +468,7 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
                               style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: _kTextSecondary))),
+                                  color: tokens.textMuted))),
                       Expanded(
                           flex: 2,
                           child: Text('Stock',
@@ -490,7 +476,7 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
                               style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: _kTextSecondary))),
+                                  color: tokens.textMuted))),
                       Expanded(
                           flex: 2,
                           child: Text('Precio',
@@ -498,7 +484,7 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
                               style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: _kTextSecondary))),
+                                  color: tokens.textMuted))),
                     ],
                   ),
                 ),
@@ -507,19 +493,19 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
                   return Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 12),
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       border: Border(
                           top: BorderSide(
-                              color: Color(0xFFF0EBE3), width: 1)),
+                              color: cs.outline, width: 1)),
                     ),
                     child: Row(
                       children: [
                         Expanded(
                             flex: 4,
                             child: Text(v.label,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 12,
-                                    color: _kTextPrimary,
+                                    color: cs.onBackground,
                                     fontWeight: FontWeight.w500))),
                         Expanded(
                             flex: 2,
@@ -535,8 +521,8 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
                             style: TextStyle(
                               fontSize: 12,
                               color: v.price > 0
-                                  ? _kPrimary
-                                  : _kTextSecondary,
+                                  ? cs.primary
+                                  : tokens.textMuted,
                               fontWeight: v.price > 0
                                   ? FontWeight.w600
                                   : FontWeight.w400,
@@ -555,9 +541,10 @@ class _AdminProductDetailPageState extends State<AdminProductDetailPage> {
   }
 
   Widget _variantStockBadge(ProductVariant v) {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     if (v.manageStock == 0) {
-      return const Text('—',
-          style: TextStyle(color: _kTextSecondary, fontSize: 12));
+      return Text('—',
+          style: TextStyle(color: tokens.textMuted, fontSize: 12));
     }
     Color color;
     if (v.stock <= 0) {
@@ -597,40 +584,42 @@ class _ProductShareCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Container(
       width: 360,
-      color: const Color(0xFFFAF8F5),
+      color: cs.background,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildHeader(),
-          _buildImage(),
-          _buildInfo(),
-          if (variants.isNotEmpty) _buildVariants(),
-          _buildFooter(),
+          _buildHeader(cs),
+          _buildImage(cs, tokens),
+          _buildInfo(cs, tokens),
+          if (variants.isNotEmpty) _buildVariants(cs, tokens),
+          _buildFooter(cs),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ColorScheme cs) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF6B4F30), Color(0xFF8B6F47)],
+          colors: [cs.primary, cs.primary],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.storefront_rounded, color: Colors.white, size: 22),
-          SizedBox(width: 10),
+          Icon(Icons.storefront_rounded, color: cs.onPrimary, size: 22),
+          const SizedBox(width: 10),
           Text(
             'Mitaï',
             style: TextStyle(
-              color: Colors.white,
+              color: cs.onPrimary,
               fontSize: 18,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
@@ -641,13 +630,13 @@ class _ProductShareCard extends StatelessWidget {
     );
   }
 
-  Widget _buildImage() {
+  Widget _buildImage(ColorScheme cs, AppTokens tokens) {
     if (product.imageUrl.isEmpty) {
       return Container(
         height: 260,
-        color: const Color(0xFFF0EBE3),
-        child: const Center(
-          child: Icon(Icons.inventory_2_outlined, size: 80, color: Color(0xFFC8966A)),
+        color: tokens.surfaceAlt,
+        child: Center(
+          child: Icon(Icons.inventory_2_outlined, size: 80, color: tokens.textSubtle),
         ),
       );
     }
@@ -658,29 +647,29 @@ class _ProductShareCard extends StatelessWidget {
         fit: BoxFit.cover,
         placeholder: (_, __) => Container(
           height: 260,
-          color: const Color(0xFFF0EBE3),
-          child: const Center(
+          color: tokens.surfaceAlt,
+          child: Center(
             child: Icon(Icons.inventory_2_outlined,
-                size: 80, color: Color(0xFFC8966A)),
+                size: 80, color: tokens.textSubtle),
           ),
         ),
         errorWidget: (_, __, ___) => Container(
           height: 260,
-          color: const Color(0xFFF0EBE3),
-          child: const Center(
+          color: tokens.surfaceAlt,
+          child: Center(
             child: Icon(Icons.inventory_2_outlined,
-                size: 80, color: Color(0xFFC8966A)),
+                size: 80, color: tokens.textSubtle),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildInfo() {
+  Widget _buildInfo(ColorScheme cs, AppTokens tokens) {
     final stockColor = _stockColor();
     final stockText = _stockText();
     return Container(
-      color: Colors.white,
+      color: cs.surface,
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -691,10 +680,10 @@ class _ProductShareCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   product.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A1A),
+                    color: cs.onBackground,
                     height: 1.25,
                   ),
                 ),
@@ -721,24 +710,24 @@ class _ProductShareCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'Cód: ${product.code}',
-              style: const TextStyle(
-                  fontSize: 11, color: Color(0xFF6B6B6B), fontFamily: 'monospace'),
+              style: TextStyle(
+                  fontSize: 11, color: tokens.textMuted, fontFamily: 'monospace'),
             ),
           ],
           const SizedBox(height: 12),
           Text(
             '₡ ${fmt.format(product.price)}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF8B6F47),
+              color: cs.primary,
             ),
           ),
           if (product.mayorPrice != null && product.mayorPrice! > 0) ...[
             const SizedBox(height: 4),
             Text(
               'Precio mayoreo: ₡ ${fmt.format(product.mayorPrice)}',
-              style: const TextStyle(fontSize: 13, color: Color(0xFF6B6B6B)),
+              style: TextStyle(fontSize: 13, color: tokens.textMuted),
             ),
           ],
           if (product.discount != null && product.discount! > 0) ...[
@@ -746,13 +735,13 @@ class _ProductShareCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withOpacity(0.10),
+                color: cs.error.withOpacity(0.10),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 '${product.discount}% de descuento',
-                style: const TextStyle(
-                    color: Color(0xFFEF4444),
+                style: TextStyle(
+                    color: cs.error,
                     fontSize: 12,
                     fontWeight: FontWeight.w600),
               ),
@@ -763,23 +752,23 @@ class _ProductShareCard extends StatelessWidget {
     );
   }
 
-  Widget _buildVariants() {
+  Widget _buildVariants(ColorScheme cs, AppTokens tokens) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF0EBE3)),
+        border: Border.all(color: cs.outline),
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF5EDE0),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+            decoration: BoxDecoration(
+              color: tokens.surfaceAlt,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 Expanded(
                     flex: 4,
@@ -787,7 +776,7 @@ class _ProductShareCard extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF6B6B6B)))),
+                            color: tokens.textMuted))),
                 Expanded(
                     flex: 2,
                     child: Text('Stock',
@@ -795,7 +784,7 @@ class _ProductShareCard extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF6B6B6B)))),
+                            color: tokens.textMuted))),
                 Expanded(
                     flex: 2,
                     child: Text('Precio',
@@ -803,24 +792,24 @@ class _ProductShareCard extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF6B6B6B)))),
+                            color: tokens.textMuted))),
               ],
             ),
           ),
           ...variants.map((v) => Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(
-                      top: BorderSide(color: Color(0xFFF0EBE3), width: 1)),
+                      top: BorderSide(color: cs.outline, width: 1)),
                 ),
                 child: Row(
                   children: [
                     Expanded(
                         flex: 4,
                         child: Text(v.label,
-                            style: const TextStyle(
-                                fontSize: 12, color: Color(0xFF1A1A1A)))),
+                            style: TextStyle(
+                                fontSize: 12, color: cs.onBackground))),
                     Expanded(
                       flex: 2,
                       child: Center(
@@ -830,8 +819,8 @@ class _ProductShareCard extends StatelessWidget {
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: v.stock <= 0
-                                ? const Color(0xFFEF4444)
-                                : const Color(0xFF22C55E),
+                                ? _kStockOut
+                                : _kStockOk,
                           ),
                         ),
                       ),
@@ -847,8 +836,8 @@ class _ProductShareCard extends StatelessWidget {
                               ? FontWeight.w600
                               : FontWeight.w400,
                           color: v.price > 0
-                              ? const Color(0xFF8B6F47)
-                              : const Color(0xFF6B6B6B),
+                              ? cs.primary
+                              : tokens.textMuted,
                         ),
                       ),
                     ),
@@ -860,21 +849,21 @@ class _ProductShareCard extends StatelessWidget {
     );
   }
 
-  Widget _buildFooter() {
+  Widget _buildFooter(ColorScheme cs) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
-      color: const Color(0xFFFAF8F5),
+      color: cs.background,
       child: Center(
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.storefront_rounded, size: 14, color: Color(0xFFC8966A)),
+            Icon(Icons.storefront_rounded, size: 14, color: cs.primary),
             const SizedBox(width: 6),
             Text(
               TenantSession.host,
               style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF8B6F47),
+                color: cs.primary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -885,11 +874,11 @@ class _ProductShareCard extends StatelessWidget {
   }
 
   Color _stockColor() {
-    if (product.manageStock == 0) return const Color(0xFF6B6B6B);
+    if (product.manageStock == 0) return _kStockOut.withOpacity(0.5);
     final s = product.totalStock ?? 0;
-    if (s <= 0) return const Color(0xFFEF4444);
-    if (s <= 5) return const Color(0xFFF59E0B);
-    return const Color(0xFF22C55E);
+    if (s <= 0) return _kStockOut;
+    if (s <= 5) return _kStockLow;
+    return _kStockOk;
   }
 
   String _stockText() {

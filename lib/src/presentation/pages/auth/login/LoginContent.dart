@@ -3,14 +3,11 @@ import 'package:ecommerce_flutter/src/domain/models/TenantConfig.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/bloc/LoginBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/bloc/LoginEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/bloc/LoginState.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:ecommerce_flutter/src/presentation/utils/BlocFormItem.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-const Color _kPrimary = Color(0xFF8B6F47);
-const Color _kAccent = Color(0xFFC8966A);
-const Color _kBg = Color(0xFFFAF8F5);
 
 class LoginContent extends StatefulWidget {
   final LoginBloc? bloc;
@@ -23,7 +20,7 @@ class LoginContent extends StatefulWidget {
 }
 
 class _LoginContentState extends State<LoginContent> {
-  // ─── Server-config step (domain only, no token) ───────────────────────────
+  // ─── Server-config step ───────────────────────────────────────────────────
   late bool _showServerConfig;
   final _serverFormKey = GlobalKey<FormState>();
   late final TextEditingController _domainCtrl;
@@ -37,9 +34,6 @@ class _LoginContentState extends State<LoginContent> {
   @override
   void initState() {
     super.initState();
-    // Show server config only when the domain hasn't been configured yet.
-    // Regular users skip this step entirely; admins configure the token
-    // separately via the dedicated admin/token route.
     _showServerConfig = !TenantSession.isConfigured;
     _domainCtrl = TextEditingController(text: TenantSession.host);
   }
@@ -49,8 +43,6 @@ class _LoginContentState extends State<LoginContent> {
     _domainCtrl.dispose();
     super.dispose();
   }
-
-  // ─── Save domain (no token required here) ────────────────────────────────
 
   Future<void> _saveServer() async {
     if (!_serverFormKey.currentState!.validate()) return;
@@ -64,7 +56,6 @@ class _LoginContentState extends State<LoginContent> {
         .replaceAll(RegExp(r'^https?://'), '')
         .replaceAll(RegExp(r'/$'), '');
 
-    // Preserve the existing app token (set separately via admin/token flow).
     await TenantSession.save(TenantConfig(
       domain: domain,
       appToken: TenantSession.appToken,
@@ -82,7 +73,6 @@ class _LoginContentState extends State<LoginContent> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _kBg,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -100,16 +90,17 @@ class _LoginContentState extends State<LoginContent> {
 
   Widget _header(BuildContext context) {
     final h = MediaQuery.of(context).size.height;
+    final cs = Theme.of(context).colorScheme;
     return Container(
       height: h * 0.34,
       width: double.infinity,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF6B4F30), _kPrimary, _kAccent],
+          colors: [AppColors.bg, const Color(0xFF1C1400), cs.primary],
         ),
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(40),
           bottomRight: Radius.circular(40),
         ),
@@ -121,10 +112,10 @@ class _LoginContentState extends State<LoginContent> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
+              color: cs.primary.withOpacity(0.18),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.storefront_rounded, size: 42, color: Colors.white),
+            child: Icon(Icons.storefront_rounded, size: 42, color: cs.onPrimary),
           ),
           const SizedBox(height: 16),
           Text(
@@ -139,16 +130,18 @@ class _LoginContentState extends State<LoginContent> {
           const SizedBox(height: 4),
           Text(
             _showServerConfig ? 'Configurar dominio' : 'Iniciá sesión para continuar',
-            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
           ),
         ],
       ),
     );
   }
 
-  // ─── Server config card (domain only) ────────────────────────────────────
+  // ─── Server config card ───────────────────────────────────────────────────
 
   Widget _serverConfigCard() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Form(
@@ -158,25 +151,20 @@ class _LoginContentState extends State<LoginContent> {
           children: [
             Row(
               children: [
-                const Icon(Icons.dns_outlined, size: 18, color: _kPrimary),
+                Icon(Icons.dns_outlined, size: 18, color: cs.primary),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'Conectar tienda',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A1A),
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: cs.onBackground),
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
               'Ingresá el dominio de la tienda para continuar.',
-              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 13, color: tokens.textMuted),
             ),
             const SizedBox(height: 24),
-
             TextFormField(
               controller: _domainCtrl,
               keyboardType: TextInputType.url,
@@ -186,53 +174,41 @@ class _LoginContentState extends State<LoginContent> {
                 if (!d.contains('.')) return 'Dominio inválido (ej: ejemplo.com)';
                 return null;
               },
-              style: const TextStyle(fontSize: 14),
+              style: TextStyle(fontSize: 14, color: cs.onBackground),
               decoration: _inputDecoration('Dominio de la tienda', Icons.language_outlined)
                   .copyWith(hintText: 'ejemplo.com'),
             ),
-
             if (_serverError != null) ...[
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade200),
+                  color: cs.error.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: cs.error.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, size: 16, color: Colors.red.shade700),
+                    Icon(Icons.error_outline, size: 16, color: cs.error),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        _serverError!,
-                        style: TextStyle(fontSize: 12, color: Colors.red.shade700),
-                      ),
+                      child: Text(_serverError!, style: TextStyle(fontSize: 12, color: cs.error)),
                     ),
                   ],
                 ),
               ),
             ],
             const SizedBox(height: 28),
-
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton.icon(
                 onPressed: _savingServer ? null : _saveServer,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _kPrimary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
                 icon: _savingServer
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: cs.onPrimary),
                       )
                     : const Icon(Icons.link_rounded, size: 18),
                 label: Text(
@@ -241,7 +217,6 @@ class _LoginContentState extends State<LoginContent> {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
             _privacyLink(),
           ],
@@ -253,6 +228,8 @@ class _LoginContentState extends State<LoginContent> {
   // ─── Credential card ──────────────────────────────────────────────────────
 
   Widget _credentialCard(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
@@ -261,22 +238,18 @@ class _LoginContentState extends State<LoginContent> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: _kPrimary.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _kPrimary.withOpacity(0.18)),
+              color: cs.primary.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: cs.primary.withOpacity(0.18)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.dns_outlined, size: 15, color: _kPrimary),
+                Icon(Icons.dns_outlined, size: 15, color: cs.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     TenantSession.host,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: _kPrimary,
-                    ),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.primary),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -292,8 +265,9 @@ class _LoginContentState extends State<LoginContent> {
                     'Cambiar',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[500],
+                      color: tokens.textMuted,
                       decoration: TextDecoration.underline,
+                      decorationColor: tokens.textMuted,
                     ),
                   ),
                 ),
@@ -301,17 +275,16 @@ class _LoginContentState extends State<LoginContent> {
             ),
           ),
           const SizedBox(height: 24),
-
-          const Text(
+          Text(
             'Bienvenido',
-            style: TextStyle(
-                fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF1A1A1A)),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: cs.onBackground),
           ),
           const SizedBox(height: 4),
-          Text('Ingresá tus credenciales para continuar',
-              style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+          Text(
+            'Ingresá tus credenciales para continuar',
+            style: TextStyle(fontSize: 13, color: tokens.textMuted),
+          ),
           const SizedBox(height: 24),
-
           Form(
             key: _formKey,
             child: Column(
@@ -336,23 +309,23 @@ class _LoginContentState extends State<LoginContent> {
   // ─── Register link ────────────────────────────────────────────────────────
 
   Widget _registerLink() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Center(
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '¿No tenés cuenta? ',
-            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-          ),
+          Text('¿No tenés cuenta? ', style: TextStyle(fontSize: 13, color: tokens.textMuted)),
           GestureDetector(
             onTap: () => Navigator.pushNamed(context, 'register'),
-            child: const Text(
+            child: Text(
               'Registrate',
               style: TextStyle(
                 fontSize: 13,
-                color: _kPrimary,
+                color: cs.primary,
                 fontWeight: FontWeight.w600,
                 decoration: TextDecoration.underline,
+                decorationColor: cs.primary,
               ),
             ),
           ),
@@ -364,32 +337,29 @@ class _LoginContentState extends State<LoginContent> {
   // ─── Form fields ──────────────────────────────────────────────────────────
 
   Widget _emailField() {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return TextFormField(
       keyboardType: TextInputType.emailAddress,
-      onChanged: (v) =>
-          widget.bloc?.add(EmailChanged(email: BlocFormItem(value: v))),
-      validator: (v) =>
-          (v == null || v.trim().isEmpty) ? 'Ingresá el correo' : null,
-      style: const TextStyle(fontSize: 14),
+      onChanged: (v) => widget.bloc?.add(EmailChanged(email: BlocFormItem(value: v))),
+      validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingresá el correo' : null,
+      style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onBackground),
       decoration: _inputDecoration('Correo electrónico', Icons.email_outlined),
     );
   }
 
   Widget _passwordField() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return TextFormField(
       obscureText: _obscurePassword,
-      onChanged: (v) =>
-          widget.bloc?.add(PasswordChanged(password: BlocFormItem(value: v))),
-      validator: (v) =>
-          (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
-      style: const TextStyle(fontSize: 14),
+      onChanged: (v) => widget.bloc?.add(PasswordChanged(password: BlocFormItem(value: v))),
+      validator: (v) => (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
+      style: TextStyle(fontSize: 14, color: cs.onBackground),
       decoration: _inputDecoration('Contraseña', Icons.lock_outline).copyWith(
         suffixIcon: IconButton(
           icon: Icon(
-            _obscurePassword
-                ? Icons.visibility_off_outlined
-                : Icons.visibility_outlined,
-            color: Colors.grey[500],
+            _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            color: tokens.textMuted,
             size: 20,
           ),
           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -407,17 +377,9 @@ class _LoginContentState extends State<LoginContent> {
           if (_formKey.currentState!.validate()) {
             widget.bloc?.add(LoginSubmit());
           } else {
-            Fluttertoast.showToast(
-                msg: 'Completá todos los campos',
-                toastLength: Toast.LENGTH_SHORT);
+            Fluttertoast.showToast(msg: 'Completá todos los campos', toastLength: Toast.LENGTH_SHORT);
           }
         },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _kPrimary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
         child: const Text(
           'Iniciar sesión',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.3),
@@ -429,13 +391,13 @@ class _LoginContentState extends State<LoginContent> {
   // ─── Privacy policy link ──────────────────────────────────────────────────
 
   Widget _privacyLink() {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Center(
       child: GestureDetector(
         onTap: () async {
           final host = TenantSession.isConfigured
               ? TenantSession.host
-              : _domainCtrl.text
-                  .trim()
+              : _domainCtrl.text.trim()
                   .replaceAll(RegExp(r'^https?://'), '')
                   .replaceAll(RegExp(r'/$'), '');
           if (host.isEmpty) return;
@@ -448,8 +410,9 @@ class _LoginContentState extends State<LoginContent> {
           'Política de privacidad',
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[500],
+            color: tokens.textMuted,
             decoration: TextDecoration.underline,
+            decorationColor: tokens.textMuted,
           ),
         ),
       ),
@@ -459,32 +422,34 @@ class _LoginContentState extends State<LoginContent> {
   // ─── Shared decoration ────────────────────────────────────────────────────
 
   InputDecoration _inputDecoration(String label, IconData icon) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon, color: _kPrimary, size: 20),
-      labelStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+      prefixIcon: Icon(icon, color: tokens.textMuted, size: 20),
+      labelStyle: TextStyle(color: tokens.textMuted, fontSize: 13),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: cs.surface,
       contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: BorderSide(color: cs.outline),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: BorderSide(color: cs.outline),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kPrimary, width: 1.5),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: BorderSide(color: cs.primary, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red, width: 1),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: BorderSide(color: cs.error),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: BorderSide(color: cs.error, width: 1.5),
       ),
     );
   }

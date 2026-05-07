@@ -11,17 +11,10 @@ import 'package:ecommerce_flutter/src/domain/models/catalog/WishlistItem.dart';
 import 'package:ecommerce_flutter/src/domain/useCases/ShoppingBag/ShoppingBagUseCases.dart';
 import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:ecommerce_flutter/src/presentation/widgets/FullScreenImagePage.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-const _kPrimary  = Color(0xFF2D2D2D);
-const _kAccent   = Color(0xFF8B6F47);
-const _kBg       = Color(0xFFFAFAFA);
-const _kSub      = Color(0xFF757575);
-const _kDivider  = Color(0xFFEEEEEE);
-const _kRed      = Color(0xFFE53935);
-const _kGreen    = Color(0xFF43A047);
 
 class CatalogProductDetailPage extends StatelessWidget {
   const CatalogProductDetailPage({super.key});
@@ -115,7 +108,10 @@ class _DetailViewState extends State<_DetailView> {
         final picked = await _showVariantSheet(labels);
         if (picked == null) return;
         variantLabel = picked;
-        final match = _detail!.variants.firstWhere((v) => v.label == picked, orElse: () => _detail!.variants.first);
+        final match = _detail!.variants.firstWhere(
+          (v) => v.label == picked,
+          orElse: () => _detail!.variants.first,
+        );
         variantPrice = match.hasCustomPrice ? match.price : null;
       }
     } else {
@@ -138,8 +134,6 @@ class _DetailViewState extends State<_DetailView> {
   Future<String?> _showVariantSheet(List<String> labels) {
     return showModalBottomSheet<String>(
       context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => _VariantPickerSheet(labels: labels),
     );
   }
@@ -164,8 +158,8 @@ class _DetailViewState extends State<_DetailView> {
   }
 
   Widget _buildScaffold(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: _kBg,
       body: CustomScrollView(
         slivers: [
           _buildAppBar(),
@@ -175,10 +169,10 @@ class _DetailViewState extends State<_DetailView> {
               children: [
                 _buildGallery(),
                 _buildPriceBlock(),
-                const Divider(color: _kDivider, height: 1),
+                Divider(color: cs.outline, height: 1),
                 if (_loadingDetail) _buildDetailLoading(),
                 if (!_loadingDetail && _detail != null) ...[
-                  if ((_detail!.variants).isNotEmpty) _buildVariants(),
+                  if (_detail!.variants.isNotEmpty) _buildVariants(),
                   if ((_detail!.description ?? '').isNotEmpty) _buildDescription(),
                   _buildMeta(),
                 ],
@@ -195,61 +189,62 @@ class _DetailViewState extends State<_DetailView> {
 
   // ─── App bar ────────────────────────────────────────────────────────────────
 
-  SliverAppBar _buildAppBar() => SliverAppBar(
-        pinned: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 1,
-        shadowColor: _kDivider,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: _kPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          widget.product.name,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: _kPrimary,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        actions: [
-          IconButton(
-            icon: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: Icon(
-                _wishlist.contains(widget.product.id) ? Icons.favorite : Icons.favorite_border,
-                key: ValueKey(_wishlist.contains(widget.product.id)),
-                color: _wishlist.contains(widget.product.id) ? _kRed : _kSub,
-                size: 22,
-              ),
+  SliverAppBar _buildAppBar() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
+    return SliverAppBar(
+      pinned: true,
+      elevation: 0,
+      scrolledUnderElevation: 1,
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back_ios_new, size: 18, color: cs.onBackground),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: Text(
+        widget.product.name,
+        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: cs.onBackground),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      actions: [
+        IconButton(
+          icon: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: Icon(
+              _wishlist.contains(widget.product.id) ? Icons.favorite : Icons.favorite_border,
+              key: ValueKey(_wishlist.contains(widget.product.id)),
+              color: _wishlist.contains(widget.product.id) ? cs.error : tokens.textMuted,
+              size: 22,
             ),
-            onPressed: _toggleWishlist,
-            tooltip: _wishlist.contains(widget.product.id) ? 'Quitar de favoritos' : 'Agregar a favoritos',
           ),
-          IconButton(
-            icon: const Icon(Icons.share_outlined, color: _kPrimary, size: 20),
-            onPressed: _share,
-            tooltip: 'Compartir',
-          ),
-        ],
-      );
+          onPressed: _toggleWishlist,
+          tooltip: _wishlist.contains(widget.product.id) ? 'Quitar de favoritos' : 'Agregar a favoritos',
+        ),
+        IconButton(
+          icon: Icon(Icons.share_outlined, color: cs.onBackground, size: 20),
+          onPressed: _share,
+          tooltip: 'Compartir',
+        ),
+      ],
+    );
+  }
 
   // ─── Image gallery ───────────────────────────────────────────────────────────
 
   Widget _buildGallery() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     final urls = _detail?.imageUrls ?? [];
+
     if (urls.isEmpty) {
       final single = widget.product.imageUrl;
       if (single.isEmpty) {
         return AspectRatio(
           aspectRatio: 4 / 5,
           child: Container(
-            color: const Color(0xFFF5F5F5),
-            child: const Center(
-              child: Icon(Icons.image_outlined, size: 64, color: Color(0xFFBDBDBD)),
+            color: tokens.surfaceAlt,
+            child: Center(
+              child: Icon(Icons.image_outlined, size: 64, color: tokens.textSubtle),
             ),
           ),
         );
@@ -264,7 +259,7 @@ class _DetailViewState extends State<_DetailView> {
                 imageUrl: single,
                 fit: BoxFit.cover,
                 alignment: Alignment.topCenter,
-                placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
+                placeholder: (_, __) => Container(color: tokens.surfaceAlt),
                 errorWidget: (_, __, ___) => _imagePlaceholder(),
               ),
             ),
@@ -290,7 +285,7 @@ class _DetailViewState extends State<_DetailView> {
                     imageUrl: urls[i],
                     fit: BoxFit.cover,
                     alignment: Alignment.topCenter,
-                    placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
+                    placeholder: (_, __) => Container(color: tokens.surfaceAlt),
                     errorWidget: (_, __, ___) => _imagePlaceholder(),
                   ),
                 ),
@@ -311,7 +306,7 @@ class _DetailViewState extends State<_DetailView> {
                 width: _imageIndex == i ? 20 : 7,
                 height: 7,
                 decoration: BoxDecoration(
-                  color: _imageIndex == i ? _kAccent : const Color(0xFFD0D0D0),
+                  color: _imageIndex == i ? cs.primary : tokens.borderStrong,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -340,16 +335,21 @@ class _DetailViewState extends State<_DetailView> {
         ),
       );
 
-  Widget _imagePlaceholder() => Container(
-        color: const Color(0xFFF5F5F5),
-        child: const Center(
-          child: Icon(Icons.image_outlined, size: 64, color: Color(0xFFBDBDBD)),
-        ),
-      );
+  Widget _imagePlaceholder() {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
+    return Container(
+      color: tokens.surfaceAlt,
+      child: Center(
+        child: Icon(Icons.image_outlined, size: 64, color: tokens.textSubtle),
+      ),
+    );
+  }
 
   // ─── Price block ─────────────────────────────────────────────────────────────
 
   Widget _buildPriceBlock() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       child: Column(
@@ -357,27 +357,24 @@ class _DetailViewState extends State<_DetailView> {
         children: [
           Text(
             widget.product.name,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: _kPrimary,
-            ),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: cs.onBackground),
           ),
           if (widget.product.code?.isNotEmpty ?? false) ...[
             const SizedBox(height: 4),
             Text(
               'Ref: ${widget.product.code}',
-              style: const TextStyle(fontSize: 12, color: _kSub),
+              style: TextStyle(fontSize: 12, color: tokens.textMuted),
             ),
           ],
           const SizedBox(height: 14),
           if (_hasDiscount) ...[
             Text(
               '₡${fmtPrice(_basePrice)}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: _kSub,
+                color: tokens.textSubtle,
                 decoration: TextDecoration.lineThrough,
+                decorationColor: tokens.textSubtle,
               ),
             ),
             const SizedBox(height: 2),
@@ -386,42 +383,30 @@ class _DetailViewState extends State<_DetailView> {
               children: [
                 Text(
                   '₡${fmtPrice(_displayPrice)}',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: _kRed,
-                  ),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: cs.error),
                 ),
                 const SizedBox(width: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _kRed,
+                    color: cs.error,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     '-$_discountPct%',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
             ),
             Text(
               'Ahorrás ₡${fmtPrice(_basePrice - _displayPrice)}',
-              style: const TextStyle(fontSize: 12, color: _kGreen),
+              style: TextStyle(fontSize: 12, color: tokens.success),
             ),
           ] else
             Text(
               '₡${fmtPrice(_displayPrice)}',
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: _kAccent,
-              ),
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: cs.primary),
             ),
         ],
       ),
@@ -431,6 +416,8 @@ class _DetailViewState extends State<_DetailView> {
   // ─── Variants ────────────────────────────────────────────────────────────────
 
   Widget _buildVariants() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     final variants = _detail!.variants;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -439,20 +426,13 @@ class _DetailViewState extends State<_DetailView> {
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 'Variantes',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: _kPrimary,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: cs.onBackground),
               ),
               if (_selectedVariant != null) ...[
                 const SizedBox(width: 8),
-                Text(
-                  _selectedVariant!.label,
-                  style: const TextStyle(fontSize: 13, color: _kAccent),
-                ),
+                Text(_selectedVariant!.label, style: TextStyle(fontSize: 13, color: cs.primary)),
               ],
             ],
           ),
@@ -466,35 +446,31 @@ class _DetailViewState extends State<_DetailView> {
               return GestureDetector(
                 onTap: outOfStock
                     ? null
-                    : () => setState(
-                          () => _selectedVariant =
-                              isSelected ? null : v,
-                        ),
+                    : () => setState(() => _selectedVariant = isSelected ? null : v),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: isSelected ? _kAccent : Colors.white,
-                    borderRadius: BorderRadius.circular(10),
+                    color: isSelected ? cs.primary : cs.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                     border: Border.all(
                       color: outOfStock
-                          ? const Color(0xFFD0D0D0)
+                          ? tokens.borderStrong
                           : isSelected
-                              ? _kAccent
-                              : _kDivider,
+                              ? cs.primary
+                              : cs.outline,
                     ),
                   ),
                   child: Text(
                     outOfStock ? '${v.label} (agotado)' : v.label,
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                       color: outOfStock
-                          ? const Color(0xFFBBBBBB)
+                          ? tokens.textSubtle
                           : isSelected
-                              ? Colors.white
-                              : _kPrimary,
+                              ? cs.onPrimary
+                              : cs.onBackground,
                     ),
                   ),
                 ),
@@ -502,7 +478,7 @@ class _DetailViewState extends State<_DetailView> {
             }).toList(),
           ),
           const SizedBox(height: 16),
-          const Divider(color: _kDivider, height: 1),
+          Divider(color: cs.outline, height: 1),
         ],
       ),
     );
@@ -511,6 +487,8 @@ class _DetailViewState extends State<_DetailView> {
   // ─── Description ─────────────────────────────────────────────────────────────
 
   Widget _buildDescription() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     final desc = _detail!.description!
         .replaceAll(RegExp(r'<[^>]*>'), '')
         .replaceAll(RegExp(r'&nbsp;'), ' ')
@@ -520,43 +498,31 @@ class _DetailViewState extends State<_DetailView> {
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
     final isLong = desc.length > 200;
-    final displayText =
-        isLong && !_descExpanded ? '${desc.substring(0, 200)}...' : desc;
+    final displayText = isLong && !_descExpanded ? '${desc.substring(0, 200)}...' : desc;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Descripción',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: _kPrimary,
-            ),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: cs.onBackground),
           ),
           const SizedBox(height: 8),
-          Text(
-            displayText,
-            style: const TextStyle(fontSize: 13, color: _kSub, height: 1.6),
-          ),
+          Text(displayText, style: TextStyle(fontSize: 13, color: tokens.textMuted, height: 1.6)),
           if (isLong) ...[
             const SizedBox(height: 6),
             GestureDetector(
               onTap: () => setState(() => _descExpanded = !_descExpanded),
               child: Text(
                 _descExpanded ? 'Ver menos' : 'Ver más',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: _kAccent,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 12, color: cs.primary, fontWeight: FontWeight.w600),
               ),
             ),
           ],
           const SizedBox(height: 16),
-          const Divider(color: _kDivider, height: 1),
+          Divider(color: cs.outline, height: 1),
         ],
       ),
     );
@@ -565,6 +531,8 @@ class _DetailViewState extends State<_DetailView> {
   // ─── Metadata (stock, categories) ────────────────────────────────────────────
 
   Widget _buildMeta() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     final d = _detail!;
     final totalStock = d.stock;
     final showStock = d.manageStock == 1;
@@ -581,49 +549,37 @@ class _DetailViewState extends State<_DetailView> {
             Row(
               children: [
                 Icon(
-                  totalStock > 0
-                      ? Icons.check_circle_outline
-                      : Icons.cancel_outlined,
+                  totalStock > 0 ? Icons.check_circle_outline : Icons.cancel_outlined,
                   size: 16,
-                  color: totalStock > 0 ? _kGreen : _kRed,
+                  color: totalStock > 0 ? tokens.success : cs.error,
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  totalStock > 0
-                      ? 'En stock ($totalStock disponibles)'
-                      : 'Sin stock',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: totalStock > 0 ? _kGreen : _kRed,
-                  ),
+                  totalStock > 0 ? 'En stock ($totalStock disponibles)' : 'Sin stock',
+                  style: TextStyle(fontSize: 13, color: totalStock > 0 ? tokens.success : cs.error),
                 ),
               ],
             ),
           if (showStock && hasCategories) const SizedBox(height: 10),
-          if (hasCategories) ...[
+          if (hasCategories)
             Wrap(
               spacing: 6,
               runSpacing: 6,
               children: d.categories
                   .map((c) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF5F0EB),
-                          borderRadius: BorderRadius.circular(20),
+                          color: cs.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                          border: Border.all(color: cs.outline),
                         ),
                         child: Text(
                           c,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: _kAccent,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: TextStyle(fontSize: 11, color: cs.primary, fontWeight: FontWeight.w500),
                         ),
                       ))
                   .toList(),
             ),
-          ],
         ],
       ),
     );
@@ -631,93 +587,89 @@ class _DetailViewState extends State<_DetailView> {
 
   // ─── Detail loading / error ───────────────────────────────────────────────────
 
-  Widget _buildDetailLoading() => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 32),
-        child: Center(child: CircularProgressIndicator(color: _kAccent, strokeWidth: 2)),
-      );
+  Widget _buildDetailLoading() {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Center(child: CircularProgressIndicator(color: cs.primary, strokeWidth: 2)),
+    );
+  }
 
-  Widget _buildDetailError() => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-        child: Row(
-          children: [
-            const Icon(Icons.warning_amber_outlined, size: 16, color: _kSub),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                _detailError!,
-                style: const TextStyle(fontSize: 12, color: _kSub),
-              ),
-            ),
-            TextButton(
-              onPressed: _loadDetail,
-              child: const Text('Reintentar', style: TextStyle(color: _kAccent, fontSize: 12)),
-            ),
-          ],
-        ),
-      );
+  Widget _buildDetailError() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_outlined, size: 16, color: tokens.textMuted),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(_detailError!, style: TextStyle(fontSize: 12, color: tokens.textMuted)),
+          ),
+          TextButton(
+            onPressed: _loadDetail,
+            child: Text('Reintentar', style: TextStyle(color: cs.primary, fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
 
   // ─── Bottom bar ───────────────────────────────────────────────────────────────
 
-  Widget _buildBottomBar() => SafeArea(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: _kDivider)),
-          ),
-          child: Row(
-            children: [
-              // Secondary: small WhatsApp icon
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF25D366).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF25D366).withOpacity(0.35)),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.chat_outlined, color: Color(0xFF25D366), size: 20),
-                  onPressed: _shareWhatsApp,
-                  tooltip: 'Consultar por WhatsApp',
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Primary: add to cart
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _kPrimary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  icon: const Icon(Icons.shopping_bag_outlined, size: 18),
-                  onPressed: _addToCart,
-                  label: const Text(
-                    'Agregar al carrito',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ],
-          ),
+  Widget _buildBottomBar() {
+    final cs = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: cs.background,
+          border: Border(top: BorderSide(color: cs.outline)),
         ),
-      );
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0xFF25D366).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF25D366).withOpacity(0.35)),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.chat_outlined, color: Color(0xFF25D366), size: 20),
+                onPressed: _shareWhatsApp,
+                tooltip: 'Consultar por WhatsApp',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.shopping_bag_outlined, size: 18),
+                onPressed: _addToCart,
+                label: const Text('Agregar al carrito', style: TextStyle(fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   // ─── Actions ─────────────────────────────────────────────────────────────────
 
   Future<void> _addToCart() async {
-    // If variants exist and none is selected, prompt user to pick one
     if (_detail != null && _detail!.variants.isNotEmpty && _selectedVariant == null) {
       if (_detail!.variants.length == 1) {
         setState(() => _selectedVariant = _detail!.variants.first);
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Por favor seleccioná una variante primero'),
+          SnackBar(
+            content: const Text('Por favor seleccioná una variante primero'),
             behavior: SnackBarBehavior.floating,
+            backgroundColor: Theme.of(context).colorScheme.surface,
           ),
         );
         return;
@@ -725,10 +677,9 @@ class _DetailViewState extends State<_DetailView> {
     }
 
     final variantLabel = _selectedVariant?.label;
-    final double? vPrice =
-        (_selectedVariant != null && _selectedVariant!.hasCustomPrice)
-            ? _selectedVariant!.price
-            : null;
+    final double? vPrice = (_selectedVariant != null && _selectedVariant!.hasCustomPrice)
+        ? _selectedVariant!.price
+        : null;
 
     final product = Product(
       id: widget.product.id,
@@ -754,16 +705,18 @@ class _DetailViewState extends State<_DetailView> {
     CartNotifier.instance.update(allProducts.length);
 
     if (!mounted) return;
+    final cs = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(variantLabel != null
             ? '${widget.product.name} ($variantLabel) agregado al carrito'
             : '${widget.product.name} agregado al carrito'),
         behavior: SnackBarBehavior.floating,
+        backgroundColor: cs.surface,
         duration: const Duration(seconds: 2),
         action: SnackBarAction(
           label: 'Ver carrito',
-          textColor: _kAccent,
+          textColor: cs.primary,
           onPressed: () => Navigator.pushNamed(context, 'client/shopping_bag'),
         ),
       ),
@@ -785,8 +738,7 @@ class _DetailViewState extends State<_DetailView> {
 
   void _shareWhatsApp() async {
     final price = _displayPrice;
-    final variantNote =
-        _selectedVariant != null ? '\nVariante: ${_selectedVariant!.label}' : '';
+    final variantNote = _selectedVariant != null ? '\nVariante: ${_selectedVariant!.label}' : '';
     final text = Uri.encodeComponent(
       'Hola! Me interesa este producto:\n'
       '*${widget.product.name}*$variantNote\n'
@@ -798,7 +750,6 @@ class _DetailViewState extends State<_DetailView> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
-
 }
 
 // ─── Variant picker sheet ─────────────────────────────────────────────────────
@@ -809,6 +760,8 @@ class _VariantPickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       child: Column(
@@ -817,35 +770,46 @@ class _VariantPickerSheet extends StatelessWidget {
         children: [
           Center(
             child: Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[300], borderRadius: BorderRadius.circular(2),
+                color: tokens.borderStrong,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
           const SizedBox(height: 16),
-          const Text('Seleccioná una variante',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimary)),
+          Text(
+            'Seleccioná una variante',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: cs.onBackground),
+          ),
           const SizedBox(height: 14),
           Flexible(
             child: SingleChildScrollView(
               child: Wrap(
-                spacing: 8, runSpacing: 8,
-                children: labels.map((l) => GestureDetector(
-                  onTap: () => Navigator.pop(context, l),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F0EB),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF8B6F47).withOpacity(0.3)),
-                    ),
-                    child: Text(l,
-                        style: const TextStyle(
-                          fontSize: 13, color: Color(0xFF8B6F47), fontWeight: FontWeight.w600,
-                        )),
-                  ),
-                )).toList(),
+                spacing: 8,
+                runSpacing: 8,
+                children: labels
+                    .map((l) => GestureDetector(
+                          onTap: () => Navigator.pop(context, l),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: cs.surface,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              border: Border.all(color: cs.primary.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              l,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: cs.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ))
+                    .toList(),
               ),
             ),
           ),

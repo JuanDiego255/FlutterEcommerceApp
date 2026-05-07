@@ -9,15 +9,9 @@ import 'package:ecommerce_flutter/src/domain/useCases/auth/AuthUseCases.dart';
 import 'package:ecommerce_flutter/src/domain/useCases/ShoppingBag/ShoppingBagUseCases.dart';
 import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-
-const _kAccent  = Color(0xFF8B6F47);
-const _kPrimary = Color(0xFF2D2D2D);
-const _kBg      = Color(0xFFFAFAFA);
-const _kCard    = Colors.white;
-const _kDivider = Color(0xFFEEEEEE);
-const _kSub     = Color(0xFF757575);
 
 class GuestCheckoutPage extends StatefulWidget {
   const GuestCheckoutPage({super.key});
@@ -70,7 +64,6 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
     final products = await locator<ShoppingBagUseCases>().getProducts.run();
     final total    = await locator<ShoppingBagUseCases>().getTotal.run();
 
-    // Pre-fill user data if logged in
     final AuthResponse? session = await locator<AuthUseCases>().getUserSession.run();
     if (session != null) {
       _nameCtrl.text  = '${session.user.name ?? ''} ${session.user.lastname ?? ''}'.trim();
@@ -117,17 +110,19 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
 
     if (!mounted) return;
     if (result is Success) {
-      // Clear cart after successful order
       for (final p in _products) {
         await locator<ShoppingBagUseCases>().deleteItem.run(p);
       }
       CartNotifier.instance.update(0);
 
       if (!mounted) return;
+      final cs = Theme.of(context).colorScheme;
+      final tokens = Theme.of(context).extension<AppTokens>()!;
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
+          backgroundColor: cs.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -135,19 +130,21 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
               Container(
                 width: 64, height: 64,
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: tokens.success.withOpacity(0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check_circle, color: Colors.green, size: 40),
+                child: Icon(Icons.check_circle, color: tokens.success, size: 40),
               ),
               const SizedBox(height: 16),
-              const Text('¡Pedido recibido!',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _kPrimary)),
+              Text(
+                '¡Pedido recibido!',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onBackground),
+              ),
               const SizedBox(height: 8),
               Text(
                 'Revisá tu correo (${_emailCtrl.text.trim()}) para los detalles de tu pedido.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: _kSub),
+                style: TextStyle(fontSize: 13, color: tokens.textMuted),
               ),
             ],
           ),
@@ -155,18 +152,9 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _kAccent,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
                 onPressed: () {
-                  Navigator.pop(context); // close dialog
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    'catalog/home',
-                    (route) => false,
-                  );
+                  Navigator.pop(context);
+                  Navigator.pushNamedAndRemoveUntil(context, 'catalog/home', (route) => false);
                 },
                 child: const Text('Ir al catálogo'),
               ),
@@ -189,7 +177,7 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: Colors.red[700],
+        backgroundColor: Theme.of(context).colorScheme.error,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 5),
       ),
@@ -198,30 +186,30 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: _kBg,
       appBar: AppBar(
-        backgroundColor: _kCard,
         elevation: 0,
         scrolledUnderElevation: 1,
-        shadowColor: _kDivider,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: _kPrimary),
+          icon: Icon(Icons.arrow_back_ios_new, size: 18, color: cs.onBackground),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Formulario de compra',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _kPrimary),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onBackground),
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: _kAccent))
+          ? Center(child: CircularProgressIndicator(color: cs.primary))
           : _buildForm(),
       bottomNavigationBar: _products.isNotEmpty ? _buildBottomBar() : null,
     );
   }
 
   Widget _buildForm() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       child: Form(
@@ -246,8 +234,7 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
             const SizedBox(height: 20),
             _sectionTitle('Dirección de entrega'),
             const SizedBox(height: 12),
-            _field(controller: _countryCtrl, label: 'País', icon: Icons.flag_outlined,
-                readOnly: true),
+            _field(controller: _countryCtrl, label: 'País', icon: Icons.flag_outlined, readOnly: true),
             _field(controller: _provinceCtrl, label: 'Provincia', icon: Icons.location_city_outlined,
                 validator: (v) => (v?.trim().isEmpty ?? true) ? 'Campo requerido' : null),
             _field(controller: _cityCtrl, label: 'Cantón', icon: Icons.map_outlined,
@@ -268,19 +255,19 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _kAccent.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _kAccent.withOpacity(0.25)),
+                color: cs.primary.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: cs.primary.withOpacity(0.25)),
               ),
-              child: const Row(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.info_outline, size: 16, color: _kAccent),
-                  SizedBox(width: 8),
+                  Icon(Icons.info_outline, size: 16, color: cs.primary),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Realizá una transferencia bancaria o SINPE Móvil y adjuntá el comprobante aquí. Requerido para completar el pedido.',
-                      style: TextStyle(fontSize: 12, color: _kAccent),
+                      style: TextStyle(fontSize: 12, color: cs.primary),
                     ),
                   ),
                 ],
@@ -294,10 +281,13 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
     );
   }
 
-  Widget _sectionTitle(String title) => Text(
-    title,
-    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _kPrimary),
-  );
+  Widget _sectionTitle(String title) {
+    final cs = Theme.of(context).colorScheme;
+    return Text(
+      title,
+      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: cs.onBackground),
+    );
+  }
 
   Widget _field({
     required TextEditingController controller,
@@ -308,6 +298,8 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
     bool readOnly = false,
     int maxLines = 1,
   }) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
@@ -316,29 +308,33 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
         readOnly: readOnly,
         maxLines: maxLines,
         validator: validator,
-        style: const TextStyle(fontSize: 14),
+        style: TextStyle(fontSize: 14, color: cs.onBackground),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(fontSize: 13, color: _kSub),
-          prefixIcon: Icon(icon, size: 18, color: _kSub),
+          labelStyle: TextStyle(fontSize: 13, color: tokens.textMuted),
+          prefixIcon: Icon(icon, size: 18, color: tokens.textMuted),
           filled: true,
-          fillColor: readOnly ? const Color(0xFFF5F5F5) : _kCard,
+          fillColor: readOnly ? tokens.surfaceAlt : cs.surface,
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: _kDivider),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderSide: BorderSide(color: cs.outline),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: _kDivider),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderSide: BorderSide(color: cs.outline),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: _kAccent),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderSide: BorderSide(color: cs.primary),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Colors.red),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderSide: BorderSide(color: cs.error),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderSide: BorderSide(color: cs.error),
           ),
         ),
       ),
@@ -346,11 +342,13 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
   }
 
   Widget _buildOrderSummary() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Container(
       decoration: BoxDecoration(
-        color: _kCard,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kDivider),
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: cs.outline),
       ),
       child: Column(
         children: [
@@ -363,34 +361,33 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(p.name,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _kPrimary)),
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onBackground)),
                       if (p.selectedVariant != null)
                         Text(p.selectedVariant!,
-                            style: const TextStyle(fontSize: 11, color: _kSub)),
+                            style: TextStyle(fontSize: 11, color: tokens.textMuted)),
                     ],
                   ),
                 ),
-                Text(
-                  'x${p.quantity ?? 1}',
-                  style: const TextStyle(fontSize: 12, color: _kSub),
-                ),
+                Text('x${p.quantity ?? 1}', style: TextStyle(fontSize: 12, color: tokens.textMuted)),
                 const SizedBox(width: 8),
                 Text(
                   '₡${fmtPrice(p.effectivePrice * (p.quantity ?? 1))}',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _kAccent),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.primary),
                 ),
               ],
             ),
           )),
-          const Divider(height: 1, color: _kDivider),
+          Divider(height: 1, color: cs.outline),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Total', style: TextStyle(fontWeight: FontWeight.w700, color: _kPrimary)),
-                Text('₡${fmtPrice(_total)}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _kAccent)),
+                Text('Total', style: TextStyle(fontWeight: FontWeight.w700, color: cs.onBackground)),
+                Text(
+                  '₡${fmtPrice(_total)}',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: cs.primary),
+                ),
               ],
             ),
           ),
@@ -400,16 +397,18 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
   }
 
   Widget _buildProofUpload() {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return GestureDetector(
       onTap: _pickImage,
       child: Container(
         width: double.infinity,
         height: _proofImage == null ? 100 : null,
         decoration: BoxDecoration(
-          color: _kCard,
-          borderRadius: BorderRadius.circular(10),
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
-            color: _proofImage != null ? _kAccent : _kDivider,
+            color: _proofImage != null ? cs.primary : cs.outline,
             width: _proofImage != null ? 1.5 : 1,
           ),
         ),
@@ -417,16 +416,18 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
             ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.upload_file_outlined, size: 28, color: Colors.grey[400]),
+                  Icon(Icons.upload_file_outlined, size: 28, color: tokens.textSubtle),
                   const SizedBox(height: 6),
-                  Text('Toca para adjuntar comprobante',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                  Text(
+                    'Toca para adjuntar comprobante',
+                    style: TextStyle(fontSize: 12, color: tokens.textMuted),
+                  ),
                 ],
               )
             : Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(9),
+                    borderRadius: BorderRadius.circular(AppRadius.md - 1),
                     child: Image.file(
                       File(_proofImage!.path),
                       width: double.infinity,
@@ -454,25 +455,21 @@ class _GuestCheckoutPageState extends State<GuestCheckoutPage> {
   }
 
   Widget _buildBottomBar() {
+    final cs = Theme.of(context).colorScheme;
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        decoration: const BoxDecoration(
-          color: _kCard,
-          border: Border(top: BorderSide(color: _kDivider)),
+        decoration: BoxDecoration(
+          color: cs.background,
+          border: Border(top: BorderSide(color: cs.outline)),
         ),
         child: ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _kAccent,
-            foregroundColor: Colors.white,
-            minimumSize: const Size(double.infinity, 52),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
+          style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 52)),
           onPressed: _submitting ? null : _submit,
           icon: _submitting
-              ? const SizedBox(
+              ? SizedBox(
                   width: 18, height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: cs.onPrimary),
                 )
               : const Icon(Icons.check_circle_outline, size: 20),
           label: Text(

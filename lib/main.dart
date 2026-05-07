@@ -34,6 +34,7 @@ import 'package:ecommerce_flutter/src/presentation/pages/checkout/GuestCheckoutP
 import 'package:ecommerce_flutter/src/presentation/pages/legal/LegalPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/profile/update/ProfileUpdatePage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/roles/RolesPage.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -82,10 +83,7 @@ class _MyAppState extends State<MyApp> {
         navigatorKey: navigatorKey,
         debugShowCheckedModeBanner: false,
         title: 'SafeWor Solutions',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-        ),
+        theme: AppTheme.dark(),
         initialRoute: TenantSession.isConfigured ? 'catalog/home' : 'tenant/select',
         routes: {
           'tenant/select': (BuildContext context) => const TenantSelectPage(),

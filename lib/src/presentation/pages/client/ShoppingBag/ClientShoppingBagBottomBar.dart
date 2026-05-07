@@ -1,14 +1,10 @@
 import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/bloc/ClientShoppingBagState.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-const _kAccent  = Color(0xFF8B6F47);
-const _kPrimary = Color(0xFF2D2D2D);
-const _kSub     = Color(0xFF757575);
-
 class ClientShoppingBagBottomBar extends StatelessWidget {
-
   final ClientShoppingBagState state;
 
   const ClientShoppingBagBottomBar(this.state, {super.key});
@@ -17,39 +13,32 @@ class ClientShoppingBagBottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     if (state.products.isEmpty) return const SizedBox.shrink();
 
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
+
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFEEEEEE))),
+        decoration: BoxDecoration(
+          color: cs.background,
+          border: Border(top: BorderSide(color: cs.outline)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Total row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Total del pedido',
-                  style: TextStyle(fontSize: 13, color: _kSub),
-                ),
+                Text('Total del pedido', style: TextStyle(fontSize: 13, color: tokens.textMuted)),
                 Text(
                   '₡${fmtPrice(state.total)}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: _kAccent,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: cs.primary),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            // Action buttons row
             Row(
               children: [
-                // Secondary: WhatsApp share (small icon button)
                 Tooltip(
                   message: 'Enviar carrito por WhatsApp',
                   child: Container(
@@ -58,33 +47,20 @@ class ClientShoppingBagBottomBar extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFF25D366).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: const Color(0xFF25D366).withOpacity(0.35)),
+                      border: Border.all(color: const Color(0xFF25D366).withOpacity(0.35)),
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.chat_outlined,
-                          color: Color(0xFF25D366), size: 20),
+                      icon: const Icon(Icons.chat_outlined, color: Color(0xFF25D366), size: 20),
                       onPressed: () => _shareWhatsApp(context),
                       tooltip: 'Compartir por WhatsApp',
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
-                // Primary: proceed to checkout
                 Expanded(
                   child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _kPrimary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
                     icon: const Icon(Icons.shopping_cart_checkout, size: 18),
-                    label: const Text(
-                      'Proceder al pago',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                    ),
+                    label: const Text('Proceder al pago', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                     onPressed: () => _goToCheckout(context),
                   ),
                 ),

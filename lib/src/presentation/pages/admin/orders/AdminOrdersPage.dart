@@ -3,17 +3,11 @@ import 'package:ecommerce_flutter/src/data/dataSource/remote/services/MitaiApiSe
 import 'package:ecommerce_flutter/src/domain/models/AdminOrder.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/admin/orders/AdminOrderDetailPage.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-// ─── Theme ────────────────────────────────────────────────────────────────────
-const Color _kBg      = Color(0xFFFAF8F5);
-const Color _kPrimary = Color(0xFF8B6F47);
-const Color _kAccent  = Color(0xFFC8966A);
-const Color _kSurface = Color(0xFFFFFFFF);
-const Color _kText    = Color(0xFF1A1A1A);
-const Color _kSub     = Color(0xFF6B6B6B);
-
+// ─── Semantic status colors (business-logic, intentional) ─────────────────────
 const Color _cVigente    = Color(0xFF22C55E);
 const Color _cEntregado  = Color(0xFF3B82F6);
 const Color _cCancelado  = Color(0xFFEF4444);
@@ -109,9 +103,10 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
   }
 
   void _snack(String msg, {bool ok = false}) {
+    final cs = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: ok ? _kPrimary : Colors.red.shade700,
+      backgroundColor: ok ? cs.primary : cs.error,
     ));
   }
 
@@ -171,6 +166,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
       chosen = await showDialog<int>(
         context: context,
         builder: (ctx) => AlertDialog(
+          backgroundColor: Theme.of(ctx).colorScheme.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Cancelar pedido'),
           content: const Text('¿Cómo deseas proceder con este pedido?'),
@@ -192,6 +188,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
       chosen = await showDialog<int>(
         context: context,
         builder: (ctx) => AlertDialog(
+          backgroundColor: Theme.of(ctx).colorScheme.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('En proceso de cancelación'),
           actions: [
@@ -212,6 +209,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
       chosen = await showDialog<int>(
         context: context,
         builder: (ctx) => AlertDialog(
+          backgroundColor: Theme.of(ctx).colorScheme.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Pedido cancelado'),
           actions: [
@@ -242,6 +240,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(ctx).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Eliminar pedido #${order.id}'),
         content: const Text('Esta acción no se puede deshacer.'),
@@ -249,7 +248,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: _cCancelado),
             child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -277,8 +276,6 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => _ProofSheet(orderId: order.id, proofUrl: url),
     );
   }
@@ -296,8 +293,6 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => _ShippingSheet(orderId: order.id, shipping: ship),
     );
   }
@@ -319,8 +314,6 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => _ItemsSheet(orderId: order.id, items: items, fmt: _fmt),
     );
   }
@@ -331,16 +324,18 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildSearchBar(),
-        _buildFilterBar(),
-        Expanded(child: _buildList()),
+        _buildSearchBar(context),
+        _buildFilterBar(context),
+        Expanded(child: _buildList(context)),
       ],
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Container(
-      color: _kSurface,
+      color: cs.surface,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: TextField(
         controller: _searchCtrl,
@@ -353,11 +348,11 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
         onSubmitted: (v) { _search = v; _load(); },
         decoration: InputDecoration(
           hintText: 'Buscar por nombre, teléfono, correo…',
-          hintStyle: const TextStyle(color: _kSub, fontSize: 13),
-          prefixIcon: const Icon(Icons.search, color: _kSub, size: 20),
+          hintStyle: TextStyle(color: tokens.textMuted, fontSize: 13),
+          prefixIcon: Icon(Icons.search, color: tokens.textMuted, size: 20),
           suffixIcon: _search.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.close, size: 18, color: _kSub),
+                  icon: Icon(Icons.close, size: 18, color: tokens.textMuted),
                   onPressed: () {
                     _searchCtrl.clear();
                     _search = '';
@@ -365,7 +360,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                   })
               : null,
           filled: true,
-          fillColor: _kBg,
+          fillColor: cs.background,
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -376,9 +371,10 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
     );
   }
 
-  Widget _buildFilterBar() {
+  Widget _buildFilterBar(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
-      color: _kSurface,
+      color: cs.surface,
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
       child: Row(
         children: [
@@ -415,24 +411,25 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
     );
   }
 
-  Widget _buildList() {
+  Widget _buildList(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: _kPrimary));
+      return Center(child: CircularProgressIndicator(color: cs.primary));
     }
     if (_orders.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.receipt_long_outlined, size: 64, color: _kAccent),
+            Icon(Icons.receipt_long_outlined, size: 64, color: cs.primary),
             const SizedBox(height: 12),
-            const Text('Sin pedidos', style: TextStyle(color: _kSub, fontSize: 15)),
+            Text('Sin pedidos', style: TextStyle(color: tokens.textMuted, fontSize: 15)),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _load,
-              style: ElevatedButton.styleFrom(backgroundColor: _kPrimary),
-              icon: const Icon(Icons.refresh, color: Colors.white),
-              label: const Text('Recargar', style: TextStyle(color: Colors.white)),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Recargar'),
             ),
           ],
         ),
@@ -441,16 +438,16 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
 
     return RefreshIndicator(
       onRefresh: _load,
-      color: _kPrimary,
+      color: cs.primary,
       child: ListView.builder(
         controller: _scrollCtrl,
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         itemCount: _orders.length + (_loadingMore ? 1 : 0),
         itemBuilder: (ctx, i) {
           if (i == _orders.length) {
-            return const Padding(
-              padding: EdgeInsets.all(20),
-              child: Center(child: CircularProgressIndicator(color: _kPrimary, strokeWidth: 2)),
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Center(child: CircularProgressIndicator(color: cs.primary, strokeWidth: 2)),
             );
           }
           return _OrderCard(
@@ -514,12 +511,14 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: _kSurface,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2)),
@@ -528,56 +527,56 @@ class _OrderCard extends StatelessWidget {
               ? Border.all(color: _cCancelado.withOpacity(0.3))
               : order.cancelBuy == 1
                   ? Border.all(color: _cPendCan.withOpacity(0.4))
-                  : null,
+                  : Border.all(color: cs.outline),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
-            _buildCustomer(),
-            _buildTotals(),
-            const Divider(height: 1, color: Color(0xFFF0EBE3)),
+            _buildHeader(cs, tokens),
+            _buildCustomer(cs, tokens),
+            _buildTotals(cs, tokens),
+            Divider(height: 1, color: cs.outline),
             _buildStatusPills(),
-            const Divider(height: 1, color: Color(0xFFF0EBE3)),
-            _buildActions(),
+            Divider(height: 1, color: cs.outline),
+            _buildActions(tokens),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(ColorScheme cs, AppTokens tokens) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
       child: Row(
         children: [
           Text('#${order.id}',
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: _kText)),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: cs.onBackground)),
           const SizedBox(width: 8),
           _KindChip(origin: order.origin),
           const Spacer(),
           Text(order.formattedDate,
-              style: const TextStyle(fontSize: 11, color: _kSub)),
+              style: TextStyle(fontSize: 11, color: tokens.textMuted)),
         ],
       ),
     );
   }
 
-  Widget _buildCustomer() {
+  Widget _buildCustomer(ColorScheme cs, AppTokens tokens) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(order.displayName,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _kText)),
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: cs.onBackground)),
           if (order.displayTelephone.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Row(children: [
-                const Icon(Icons.phone_outlined, size: 12, color: _kSub),
+                Icon(Icons.phone_outlined, size: 12, color: tokens.textMuted),
                 const SizedBox(width: 4),
-                Text(order.displayTelephone, style: const TextStyle(fontSize: 12, color: _kSub)),
+                Text(order.displayTelephone, style: TextStyle(fontSize: 12, color: tokens.textMuted)),
               ]),
             ),
         ],
@@ -585,12 +584,12 @@ class _OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTotals() {
+  Widget _buildTotals(ColorScheme cs, AppTokens tokens) {
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 10),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: _kBg,
+        color: cs.background,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -631,7 +630,7 @@ class _OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildActions() {
+  Widget _buildActions(AppTokens tokens) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       child: Row(
@@ -653,26 +652,26 @@ class _OrderCard extends StatelessWidget {
             tooltip: 'Ver comprobante',
             color: order.proofUrl != null && order.proofUrl!.isNotEmpty
                 ? _cApartado
-                : _kSub,
+                : tokens.textMuted,
             onTap: onProof,
           ),
           const Spacer(),
           _ActionBtn(
             icon: Icons.inventory_2_outlined,
             tooltip: order.readyToGive == 1 ? 'Marcar no listo' : 'Marcar listo',
-            color: order.readyToGive == 1 ? _cListo : _kSub,
+            color: order.readyToGive == 1 ? _cListo : tokens.textMuted,
             onTap: onReady,
           ),
           _ActionBtn(
             icon: Icons.delivery_dining_outlined,
             tooltip: order.delivered == 1 ? 'Quitar entregado' : 'Marcar entregado',
-            color: order.delivered == 1 ? _cEntregado : _kSub,
+            color: order.delivered == 1 ? _cEntregado : tokens.textMuted,
             onTap: onDelivery,
           ),
           _ActionBtn(
             icon: Icons.check_circle_outline,
             tooltip: order.approved == 1 ? 'Quitar aprobación' : 'Aprobar',
-            color: order.approved == 1 ? _cAprobado : _kSub,
+            color: order.approved == 1 ? _cAprobado : tokens.textMuted,
             onTap: onApprove,
           ),
           _ActionBtn(
@@ -765,15 +764,17 @@ class _TotalChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: _kSub)),
+        Text(label, style: TextStyle(fontSize: 10, color: tokens.textMuted)),
         Text('₡${fmt.format(amount)}',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: highlight ? _cApartado : _kText,
+              color: highlight ? _cApartado : cs.onBackground,
             )),
       ],
     );
@@ -814,14 +815,16 @@ class _DropFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     final active = value != 'all';
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       decoration: BoxDecoration(
-        color: active ? _kPrimary.withOpacity(0.07) : _kBg,
+        color: active ? cs.primary.withOpacity(0.07) : cs.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: active ? _kPrimary.withOpacity(0.5) : const Color(0xFFD6C9B8)),
+        border: Border.all(color: active ? cs.primary.withOpacity(0.5) : cs.outline),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -829,8 +832,8 @@ class _DropFilter extends StatelessWidget {
           isDense: true,
           isExpanded: true,
           icon: Icon(Icons.keyboard_arrow_down_rounded, size: 18,
-              color: active ? _kPrimary : _kSub),
-          style: TextStyle(fontSize: 12, color: active ? _kPrimary : _kText,
+              color: active ? cs.primary : tokens.textMuted),
+          style: TextStyle(fontSize: 12, color: active ? cs.primary : cs.onBackground,
               fontWeight: active ? FontWeight.w700 : FontWeight.w500),
           onChanged: (v) { if (v != null) onChanged(v); },
           items: items.map((item) {
@@ -841,7 +844,7 @@ class _DropFilter extends StatelessWidget {
               value: val,
               child: Row(
                 children: [
-                  Icon(icon, size: 13, color: isSelected ? _kPrimary : _kSub),
+                  Icon(icon, size: 13, color: isSelected ? cs.primary : tokens.textMuted),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(label,
@@ -849,7 +852,7 @@ class _DropFilter extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected ? _kPrimary : _kText,
+                          color: isSelected ? cs.primary : cs.onBackground,
                         )),
                   ),
                 ],
@@ -871,6 +874,8 @@ class _ShippingSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Container(
       padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom + 24,
@@ -894,51 +899,51 @@ class _ShippingSheet extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Información de envío',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: _kText)),
+                    Text('Información de envío',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: cs.onBackground)),
                     Text('Pedido #$orderId',
-                        style: const TextStyle(fontSize: 12, color: _kSub)),
+                        style: TextStyle(fontSize: 12, color: tokens.textMuted)),
                   ],
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.close, color: _kSub),
+                icon: Icon(Icons.close, color: tokens.textMuted),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
           ),
           const SizedBox(height: 20),
-          _twoCol('NOMBRE', shipping['name'] ?? '—', 'TELÉFONO', shipping['telephone'] ?? '—'),
+          _twoCol('NOMBRE', shipping['name'] ?? '—', 'TELÉFONO', shipping['telephone'] ?? '—', cs, tokens),
           const SizedBox(height: 14),
-          _field('E-MAIL', shipping['email'] ?? '—'),
-          const Divider(height: 28, color: Color(0xFFF0EBE3)),
-          _twoCol('PAÍS', shipping['country'] ?? '—', 'PROVINCIA', shipping['province'] ?? '—'),
+          _field('E-MAIL', shipping['email'] ?? '—', cs, tokens),
+          Divider(height: 28, color: cs.outline),
+          _twoCol('PAÍS', shipping['country'] ?? '—', 'PROVINCIA', shipping['province'] ?? '—', cs, tokens),
           const SizedBox(height: 14),
-          _twoCol('CANTÓN', shipping['city'] ?? '—', 'DISTRITO', shipping['district'] ?? '—'),
+          _twoCol('CANTÓN', shipping['city'] ?? '—', 'DISTRITO', shipping['district'] ?? '—', cs, tokens),
           const SizedBox(height: 14),
-          _field('DIRECCIÓN', shipping['address'] ?? '—'),
+          _field('DIRECCIÓN', shipping['address'] ?? '—', cs, tokens),
           const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  Widget _twoCol(String l1, String v1, String l2, String v2) => Row(
+  Widget _twoCol(String l1, String v1, String l2, String v2, ColorScheme cs, AppTokens tokens) => Row(
     children: [
-      Expanded(child: _field(l1, v1)),
+      Expanded(child: _field(l1, v1, cs, tokens)),
       const SizedBox(width: 16),
-      Expanded(child: _field(l2, v2)),
+      Expanded(child: _field(l2, v2, cs, tokens)),
     ],
   );
 
-  Widget _field(String label, String value) => Column(
+  Widget _field(String label, String value, ColorScheme cs, AppTokens tokens) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: const TextStyle(fontSize: 10, color: _kSub, fontWeight: FontWeight.w600,
+      Text(label, style: TextStyle(fontSize: 10, color: tokens.textMuted, fontWeight: FontWeight.w600,
           letterSpacing: 0.5)),
       const SizedBox(height: 3),
       Text(value.isEmpty ? '—' : value,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _kText)),
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onBackground)),
     ],
   );
 }
@@ -953,6 +958,8 @@ class _ItemsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       maxChildSize: 0.92,
@@ -977,15 +984,15 @@ class _ItemsSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Artículos del pedido',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: _kText)),
+                      Text('Artículos del pedido',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: cs.onBackground)),
                       Text('Pedido #$orderId',
-                          style: const TextStyle(fontSize: 12, color: _kSub)),
+                          style: TextStyle(fontSize: 12, color: tokens.textMuted)),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, color: _kSub),
+                  icon: Icon(Icons.close, color: tokens.textMuted),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -996,7 +1003,7 @@ class _ItemsSheet extends StatelessWidget {
               controller: sc,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               itemCount: items.length,
-              separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF0EBE3)),
+              separatorBuilder: (_, __) => Divider(height: 1, color: cs.outline),
               itemBuilder: (_, i) => _ItemRow(item: items[i], fmt: fmt),
             ),
           ),
@@ -1013,6 +1020,8 @@ class _ItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
@@ -1025,10 +1034,10 @@ class _ItemRow extends StatelessWidget {
                     imageUrl: item.imageUrl!,
                     width: 60, height: 60,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => _imgPlaceholder(),
-                    errorWidget: (_, __, ___) => _imgPlaceholder(),
+                    placeholder: (_, __) => _imgPlaceholder(tokens),
+                    errorWidget: (_, __, ___) => _imgPlaceholder(tokens),
                   )
-                : _imgPlaceholder(),
+                : _imgPlaceholder(tokens),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1036,7 +1045,7 @@ class _ItemRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(item.productName,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _kText)),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: cs.onBackground)),
                 if (item.attributes.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
@@ -1046,28 +1055,28 @@ class _ItemRow extends StatelessWidget {
                           .map((a) => Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF0EBE3),
+                                  color: tokens.surfaceAlt,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: Text(a, style: const TextStyle(fontSize: 11, color: _kSub)),
+                                child: Text(a, style: TextStyle(fontSize: 11, color: tokens.textMuted)),
                               ))
                           .toList(),
                     ),
                   ),
                 const SizedBox(height: 6),
                 Text('₡${fmt.format(item.total)}',
-                    style: const TextStyle(fontSize: 13, color: _kPrimary, fontWeight: FontWeight.w700)),
+                    style: TextStyle(fontSize: 13, color: cs.primary, fontWeight: FontWeight.w700)),
               ],
             ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text('CANTIDAD',
-                  style: TextStyle(fontSize: 9, color: _kSub, fontWeight: FontWeight.w700,
+              Text('CANTIDAD',
+                  style: TextStyle(fontSize: 9, color: tokens.textMuted, fontWeight: FontWeight.w700,
                       letterSpacing: 0.5)),
               Text('${item.quantity}',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _kText)),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: cs.onBackground)),
             ],
           ),
         ],
@@ -1075,13 +1084,13 @@ class _ItemRow extends StatelessWidget {
     );
   }
 
-  Widget _imgPlaceholder() => Container(
+  Widget _imgPlaceholder(AppTokens tokens) => Container(
         width: 60, height: 60,
         decoration: BoxDecoration(
-          color: const Color(0xFFF0EBE3),
+          color: tokens.surfaceAlt,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: const Icon(Icons.shopping_bag_outlined, color: _kAccent, size: 24),
+        child: Icon(Icons.shopping_bag_outlined, color: tokens.textMuted, size: 24),
       );
 }
 
@@ -1094,6 +1103,8 @@ class _ProofSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Container(
       padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom + 24,
@@ -1105,7 +1116,7 @@ class _ProofSheet extends StatelessWidget {
           Container(
             width: 36, height: 4,
             decoration: BoxDecoration(
-                color: const Color(0xFFDDD6CC),
+                color: tokens.borderStrong,
                 borderRadius: BorderRadius.circular(2)),
           ),
           const SizedBox(height: 16),
@@ -1122,15 +1133,15 @@ class _ProofSheet extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Comprobante de pago',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: _kText)),
+                    Text('Comprobante de pago',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: cs.onBackground)),
                     Text('Pedido #$orderId',
-                        style: const TextStyle(fontSize: 12, color: _kSub)),
+                        style: TextStyle(fontSize: 12, color: tokens.textMuted)),
                   ],
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.close, color: _kSub),
+                icon: Icon(Icons.close, color: tokens.textMuted),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -1142,24 +1153,24 @@ class _ProofSheet extends StatelessWidget {
               child: CachedNetworkImage(
                 imageUrl: proofUrl,
                 fit: BoxFit.contain,
-                placeholder: (_, __) => const SizedBox(
+                placeholder: (_, __) => SizedBox(
                   height: 200,
-                  child: Center(child: CircularProgressIndicator(color: _kPrimary)),
+                  child: Center(child: CircularProgressIndicator(color: cs.primary)),
                 ),
                 errorWidget: (_, __, ___) => Container(
                   height: 180,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0EBE3),
+                    color: tokens.surfaceAlt,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.broken_image_outlined, size: 40, color: _kSub),
-                        SizedBox(height: 8),
+                        Icon(Icons.broken_image_outlined, size: 40, color: tokens.textMuted),
+                        const SizedBox(height: 8),
                         Text('No se pudo cargar la imagen',
-                            style: TextStyle(color: _kSub, fontSize: 12)),
+                            style: TextStyle(color: tokens.textMuted, fontSize: 12)),
                       ],
                     ),
                   ),

@@ -3,14 +3,8 @@ import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/remote/services/MitaiApiService.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/admin/catalog/AdminCatalogProductsPage.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-
-const Color _kBg = Color(0xFFFAF8F5);
-const Color _kPrimary = Color(0xFF8B6F47);
-const Color _kAccent = Color(0xFFC8966A);
-const Color _kSurface = Color(0xFFFFFFFF);
-const Color _kTextPrimary = Color(0xFF1A1A1A);
-const Color _kTextSecondary = Color(0xFF6B6B6B);
 
 class AdminCatalogCategoriesPage extends StatefulWidget {
   final int deptId;
@@ -63,67 +57,58 @@ class _AdminCatalogCategoriesPageState
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Scaffold(
-      backgroundColor: _kBg,
       appBar: AppBar(
+        elevation: 0,
         title: Text(
           widget.deptName,
-          style: const TextStyle(
-            color: _kTextPrimary,
+          style: TextStyle(
+            color: cs.onBackground,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
         ),
-        backgroundColor: _kSurface,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: _kPrimary),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: _kPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
-      body: _buildBody(),
+      body: _buildBody(cs, tokens),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(ColorScheme cs, AppTokens tokens) {
     if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: _kPrimary),
-      );
+      return Center(child: CircularProgressIndicator(color: cs.primary));
     }
     if (_error != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
+            Icon(Icons.error_outline, size: 64, color: cs.error),
             const SizedBox(height: 16),
             Text(
               _error!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: _kTextSecondary),
+              style: TextStyle(color: tokens.textMuted),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadData,
-              style: ElevatedButton.styleFrom(backgroundColor: _kPrimary),
-              child: const Text('Reintentar',
-                  style: TextStyle(color: Colors.white)),
+              child: const Text('Reintentar'),
             ),
           ],
         ),
       );
     }
     if (_categories.isEmpty) {
-      return const Center(
+      return Center(
         child: Text('No hay categorías en este departamento',
-            style: TextStyle(color: _kTextSecondary)),
+            style: TextStyle(color: tokens.textMuted)),
       );
     }
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: _kPrimary,
+      color: cs.primary,
       child: GridView.builder(
         padding: const EdgeInsets.all(16),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -175,19 +160,15 @@ class _CatalogCategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: _kSurface,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          border: Border.all(color: cs.outline),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -200,19 +181,18 @@ class _CatalogCategoryCard extends StatelessWidget {
                     ? CachedNetworkImage(
                         imageUrl: imageUrl,
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => _placeholder(),
-                        errorWidget: (_, __, ___) => _placeholder(),
+                        placeholder: (_, __) => _placeholder(tokens),
+                        errorWidget: (_, __, ___) => _placeholder(tokens),
                       )
-                    : _placeholder(),
+                    : _placeholder(tokens),
               ),
             ),
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               child: Text(
                 name,
-                style: const TextStyle(
-                  color: _kTextPrimary,
+                style: TextStyle(
+                  color: cs.onBackground,
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
                 ),
@@ -227,11 +207,11 @@ class _CatalogCategoryCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholder() {
+  Widget _placeholder(AppTokens tokens) {
     return Container(
-      color: const Color(0xFFF0EBE3),
-      child: const Center(
-        child: Icon(Icons.category, size: 48, color: _kAccent),
+      color: tokens.surfaceAlt,
+      child: Center(
+        child: Icon(Icons.category, size: 48, color: tokens.textSubtle),
       ),
     );
   }

@@ -4,10 +4,9 @@ import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/Clie
 import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/bloc/ClientShoppingBagBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/bloc/ClientShoppingBagEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/bloc/ClientShoppingBagState.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-const _kAccent = Color(0xFF8B6F47);
 
 class ClientShoppingBagPage extends StatefulWidget {
   const ClientShoppingBagPage({super.key});
@@ -29,17 +28,12 @@ class _ClientShoppingBagPageState extends State<ClientShoppingBagPage> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     _bloc = BlocProvider.of<ClientShoppingBagBloc>(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'Mi carrito',
-          style: TextStyle(color: Color(0xFF2D2D2D), fontWeight: FontWeight.w700),
-        ),
-        iconTheme: const IconThemeData(color: Color(0xFF2D2D2D)),
+        title: const Text('Mi carrito', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: BlocBuilder<ClientShoppingBagBloc, ClientShoppingBagState>(
         builder: (context, state) {
@@ -48,16 +42,16 @@ class _ClientShoppingBagPageState extends State<ClientShoppingBagPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.shopping_bag_outlined, size: 80, color: Colors.grey[300]),
+                  Icon(Icons.shopping_bag_outlined, size: 80, color: tokens.textSubtle),
                   const SizedBox(height: 16),
                   Text(
                     'Tu carrito está vacío',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[500], fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 16, color: tokens.textMuted, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Agregá productos desde el catálogo',
-                    style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                    style: TextStyle(fontSize: 13, color: tokens.textSubtle),
                   ),
                 ],
               ),

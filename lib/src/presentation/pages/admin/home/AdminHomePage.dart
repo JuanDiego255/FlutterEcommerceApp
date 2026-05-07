@@ -5,11 +5,9 @@ import 'package:ecommerce_flutter/src/presentation/pages/admin/home/bloc/AdminHo
 import 'package:ecommerce_flutter/src/presentation/pages/admin/home/bloc/AdminHomeState.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/admin/orders/AdminOrdersPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/profile/info/ProfileInfoPage.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-const Color _kPrimary = Color(0xFF8B6F47);
-const Color _kBg = Color(0xFFFAF8F5);
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -31,19 +29,19 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     _bloc = BlocProvider.of<AdminHomeBloc>(context);
 
     return BlocBuilder<AdminHomeBloc, AdminHomeState>(
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: _kBg,
           appBar: AppBar(
-            backgroundColor: Colors.white,
             elevation: 0,
             title: Text(
               _titles[state.pageIndex],
-              style: const TextStyle(
-                color: Color(0xFF1A1A1A),
+              style: TextStyle(
+                color: cs.onBackground,
                 fontWeight: FontWeight.w700,
                 fontSize: 20,
               ),
@@ -51,11 +49,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
             actions: [
               if (state.pageIndex == 0)
                 IconButton(
-                  icon: const Icon(Icons.search, color: Color(0xFF6B6B6B)),
+                  icon: Icon(Icons.search, color: tokens.textMuted),
                   onPressed: () {},
                 ),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Color(0xFF6B6B6B)),
+                icon: Icon(Icons.more_vert, color: tokens.textMuted),
+                color: cs.surface,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                 onSelected: (value) {
                   if (value == 'catalog') {
                     Navigator.pushNamedAndRemoveUntil(
@@ -69,25 +69,26 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     );
                   }
                 },
-                itemBuilder: (_) => const [
+                itemBuilder: (_) => [
                   PopupMenuItem(
                     value: 'catalog',
                     child: Row(
                       children: [
-                        Icon(Icons.storefront_outlined, size: 18, color: Color(0xFF8B6F47)),
-                        SizedBox(width: 8),
-                        Text('Ver catálogo público'),
+                        Icon(Icons.storefront_outlined, size: 18, color: cs.primary),
+                        const SizedBox(width: 8),
+                        Text('Ver catálogo público',
+                            style: TextStyle(color: cs.onBackground)),
                       ],
                     ),
                   ),
-                  PopupMenuDivider(),
+                  const PopupMenuDivider(),
                   PopupMenuItem(
                     value: 'logout',
                     child: Row(
                       children: [
-                        Icon(Icons.logout, size: 18, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
+                        Icon(Icons.logout, size: 18, color: cs.error),
+                        const SizedBox(width: 8),
+                        Text('Cerrar sesión', style: TextStyle(color: cs.error)),
                       ],
                     ),
                   ),
@@ -101,25 +102,12 @@ class _AdminHomePageState extends State<AdminHomePage> {
           ),
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, -2),
-                ),
-              ],
+              color: cs.background,
+              border: Border(top: BorderSide(color: cs.outline)),
             ),
             child: BottomNavigationBar(
               currentIndex: state.pageIndex,
               onTap: (i) => _bloc?.add(AdminChangeDrawerPage(pageIndex: i)),
-              backgroundColor: Colors.white,
-              selectedItemColor: _kPrimary,
-              unselectedItemColor: const Color(0xFF9E9E9E),
-              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-              unselectedLabelStyle: const TextStyle(fontSize: 11),
-              elevation: 0,
-              type: BottomNavigationBarType.fixed,
               items: const [
                 BottomNavigationBarItem(
                   icon: Icon(Icons.inventory_2_outlined),

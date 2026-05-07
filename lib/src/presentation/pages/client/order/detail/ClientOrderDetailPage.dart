@@ -1,14 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_flutter/src/domain/models/Order.dart';
 import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
-const _kAccent   = Color(0xFF8B6F47);
-const _kPrimary  = Color(0xFF2D2D2D);
-const _kSub      = Color(0xFF757575);
-const _kDivider  = Color(0xFFEEEEEE);
-const _kBg       = Color(0xFFFAFAFA);
 
 class ClientOrderDetailPage extends StatelessWidget {
   const ClientOrderDetailPage({super.key});
@@ -24,12 +19,12 @@ class _OrderDetailView extends StatelessWidget {
   final Order order;
   const _OrderDetailView({required this.order});
 
-  Color _statusColor() {
+  Color _statusColor(ColorScheme cs, AppTokens tokens) {
     switch (order.status) {
-      case 'APROBADO':   return const Color(0xFF43A047);
-      case 'DESPACHADO': return const Color(0xFF1E88E5);
-      case 'CANCELADO':  return const Color(0xFFE53935);
-      default:           return const Color(0xFFFF8F00);
+      case 'APROBADO':   return tokens.success;
+      case 'DESPACHADO': return cs.primary;
+      case 'CANCELADO':  return cs.error;
+      default:           return tokens.warning;
     }
   }
 
@@ -60,16 +55,15 @@ class _OrderDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Scaffold(
-      backgroundColor: _kBg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: _kPrimary),
         title: Text(
           'Pedido #${order.id}',
-          style: const TextStyle(
-            color: _kPrimary, fontWeight: FontWeight.w700, fontSize: 18),
+          style: TextStyle(
+            color: cs.onBackground, fontWeight: FontWeight.w700, fontSize: 18),
         ),
       ),
       body: SingleChildScrollView(
@@ -77,29 +71,27 @@ class _OrderDetailView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildStatusCard(),
+            _buildStatusCard(cs, tokens),
             const SizedBox(height: 16),
-            _buildAddressCard(),
+            _buildAddressCard(cs, tokens),
             const SizedBox(height: 16),
-            _buildProductsCard(),
+            _buildProductsCard(cs, tokens),
             const SizedBox(height: 16),
-            _buildTotalCard(),
+            _buildTotalCard(cs, tokens),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatusCard() {
-    final color = _statusColor();
+  Widget _buildStatusCard(ColorScheme cs, AppTokens tokens) {
+    final color = _statusColor(cs, tokens);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Color(0x0C000000), blurRadius: 10, offset: Offset(0, 2)),
-        ],
+        border: Border.all(color: cs.outline),
       ),
       child: Row(
         children: [
@@ -128,7 +120,7 @@ class _OrderDetailView extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   _formatDate(order.createdAt),
-                  style: const TextStyle(fontSize: 12, color: _kSub),
+                  style: TextStyle(fontSize: 12, color: tokens.textMuted),
                 ),
               ],
             ),
@@ -151,88 +143,84 @@ class _OrderDetailView extends StatelessWidget {
     );
   }
 
-  Widget _buildAddressCard() {
+  Widget _buildAddressCard(ColorScheme cs, AppTokens tokens) {
     final addr = order.address;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Color(0x0C000000), blurRadius: 10, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.location_on_outlined, color: _kAccent, size: 18),
-              SizedBox(width: 8),
-              Text(
-                'Dirección de entrega',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kPrimary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Divider(color: _kDivider, height: 1),
-          const SizedBox(height: 12),
-          if (addr != null) ...[
-            Text(
-              addr.address,
-              style: const TextStyle(fontSize: 14, color: _kPrimary, fontWeight: FontWeight.w500),
-            ),
-            if (addr.neighborhood.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                addr.neighborhood,
-                style: const TextStyle(fontSize: 12, color: _kSub),
-              ),
-            ],
-          ] else
-            const Text(
-              'Información de dirección no disponible',
-              style: TextStyle(fontSize: 13, color: _kSub),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProductsCard() {
-    final products = order.orderHasProducts ?? [];
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Color(0x0C000000), blurRadius: 10, offset: Offset(0, 2)),
-        ],
+        border: Border.all(color: cs.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.inventory_2_outlined, color: _kAccent, size: 18),
+              Icon(Icons.location_on_outlined, color: cs.primary, size: 18),
               const SizedBox(width: 8),
               Text(
-                'Productos (${products.length})',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kPrimary),
+                'Dirección de entrega',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: cs.onBackground),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          const Divider(color: _kDivider, height: 1),
-          ...products.map((ohp) => _buildProductItem(ohp)),
+          Divider(color: cs.outline, height: 1),
+          const SizedBox(height: 12),
+          if (addr != null) ...[
+            Text(
+              addr.address,
+              style: TextStyle(fontSize: 14, color: cs.onBackground, fontWeight: FontWeight.w500),
+            ),
+            if (addr.neighborhood.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                addr.neighborhood,
+                style: TextStyle(fontSize: 12, color: tokens.textMuted),
+              ),
+            ],
+          ] else
+            Text(
+              'Información de dirección no disponible',
+              style: TextStyle(fontSize: 13, color: tokens.textMuted),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildProductItem(OrderHasProduct ohp) {
+  Widget _buildProductsCard(ColorScheme cs, AppTokens tokens) {
+    final products = order.orderHasProducts ?? [];
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.inventory_2_outlined, color: cs.primary, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Productos (${products.length})',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: cs.onBackground),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Divider(color: cs.outline, height: 1),
+          ...products.map((ohp) => _buildProductItem(ohp, cs, tokens)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductItem(OrderHasProduct ohp, ColorScheme cs, AppTokens tokens) {
     final url = ohp.product.image1;
     final lineTotal = ohp.product.effectivePrice * ohp.quantity;
     return Padding(
@@ -250,17 +238,17 @@ class _OrderDetailView extends StatelessWidget {
                       imageUrl: url,
                       fit: BoxFit.cover,
                       placeholder: (_, __) =>
-                          Container(color: const Color(0xFFF5F5F5)),
+                          Container(color: tokens.surfaceAlt),
                       errorWidget: (_, __, ___) => Container(
-                        color: const Color(0xFFF5F5F5),
-                        child: const Icon(Icons.image_outlined,
-                            color: Color(0xFFBDBDBD), size: 22),
+                        color: tokens.surfaceAlt,
+                        child: Icon(Icons.image_outlined,
+                            color: tokens.textSubtle, size: 22),
                       ),
                     )
                   : Container(
-                      color: const Color(0xFFF5F5F5),
-                      child: const Icon(Icons.image_outlined,
-                          color: Color(0xFFBDBDBD), size: 22),
+                      color: tokens.surfaceAlt,
+                      child: Icon(Icons.image_outlined,
+                          color: tokens.textSubtle, size: 22),
                     ),
             ),
           ),
@@ -273,70 +261,68 @@ class _OrderDetailView extends StatelessWidget {
                   ohp.product.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: _kPrimary),
+                  style: TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600, color: cs.onBackground),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   'Cantidad: ${ohp.quantity}  •  ₡${fmtPrice(ohp.product.effectivePrice)} c/u',
-                  style: const TextStyle(fontSize: 11, color: _kSub),
+                  style: TextStyle(fontSize: 11, color: tokens.textMuted),
                 ),
               ],
             ),
           ),
           Text(
             '₡${fmtPrice(lineTotal)}',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent),
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: cs.primary),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTotalCard() {
+  Widget _buildTotalCard(ColorScheme cs, AppTokens tokens) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Color(0x0C000000), blurRadius: 10, offset: Offset(0, 2)),
-        ],
+        border: Border.all(color: cs.outline),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Subtotal',
-                  style: TextStyle(fontSize: 13, color: _kSub)),
+              Text('Subtotal',
+                  style: TextStyle(fontSize: 13, color: tokens.textMuted)),
               Text('₡${fmtPrice(_total)}',
-                  style: const TextStyle(fontSize: 13, color: _kPrimary)),
+                  style: TextStyle(fontSize: 13, color: cs.onBackground)),
             ],
           ),
           const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text('Envío', style: TextStyle(fontSize: 13, color: _kSub)),
+            children: [
+              Text('Envío', style: TextStyle(fontSize: 13, color: tokens.textMuted)),
               Text('A coordinar',
-                  style: TextStyle(fontSize: 12, color: _kSub)),
+                  style: TextStyle(fontSize: 12, color: tokens.textMuted)),
             ],
           ),
           const SizedBox(height: 10),
-          const Divider(color: _kDivider, height: 1),
+          Divider(color: cs.outline, height: 1),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Total',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _kPrimary),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onBackground),
               ),
               Text(
                 '₡${fmtPrice(_total)}',
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w700, color: _kAccent),
+                style: TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w700, color: cs.primary),
               ),
             ],
           ),

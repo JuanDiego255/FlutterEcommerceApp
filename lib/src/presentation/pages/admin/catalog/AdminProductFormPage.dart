@@ -3,16 +3,10 @@ import 'package:ecommerce_flutter/src/data/dataSource/remote/services/MitaiApiSe
 import 'package:ecommerce_flutter/src/domain/models/AttributeType.dart';
 import 'package:ecommerce_flutter/src/domain/models/MitaiProduct.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-
-const Color _kBg      = Color(0xFFFAF8F5);
-const Color _kPrimary = Color(0xFF8B6F47);
-const Color _kAccent  = Color(0xFFC8966A);
-const Color _kSurface = Color(0xFFFFFFFF);
-const Color _kText    = Color(0xFF1A1A1A);
-const Color _kSub     = Color(0xFF6B6B6B);
 
 class _Variant {
   int? combinationId;
@@ -242,23 +236,25 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
   }
 
   void _snack(String msg, {bool isError = true}) {
+    final cs = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: isError ? Colors.red.shade700 : _kPrimary,
+      backgroundColor: isError ? cs.error : cs.primary,
     ));
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: cs.background,
       appBar: AppBar(
         title: Text(_isEdit ? 'Editar producto' : 'Nuevo producto',
-            style: const TextStyle(color: _kText, fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: _kSurface,
+            style: TextStyle(color: cs.onBackground, fontWeight: FontWeight.w700, fontSize: 18)),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: _kPrimary),
+          icon: Icon(Icons.arrow_back_ios, color: cs.primary),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
@@ -266,18 +262,18 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: _saving
-                  ? const Center(child: SizedBox(width: 24, height: 24,
-                      child: CircularProgressIndicator(color: _kPrimary, strokeWidth: 2)))
+                  ? Center(child: SizedBox(width: 24, height: 24,
+                      child: CircularProgressIndicator(color: cs.primary, strokeWidth: 2)))
                   : TextButton.icon(
                       onPressed: _save,
-                      icon: const Icon(Icons.save_outlined, color: _kPrimary, size: 20),
-                      label: const Text('Guardar', style: TextStyle(color: _kPrimary, fontWeight: FontWeight.w600)),
+                      icon: Icon(Icons.save_outlined, color: cs.primary, size: 20),
+                      label: Text('Guardar', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
                     ),
             ),
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: _kPrimary))
+          ? Center(child: CircularProgressIndicator(color: cs.primary))
           : Form(
               key: _formKey,
               child: SingleChildScrollView(
@@ -285,13 +281,13 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _section('Categorías', _buildCategories()),
-                    _section('Información básica', _buildBasicInfo()),
-                    _section('Descripción', _buildDescription()),
-                    _section('Precio y stock', _buildPriceStock()),
-                    _section('Variantes / Atributos', _buildVariants()),
-                    _section('Imágenes (máx. 4)', _buildImages()),
-                    _section('Opciones adicionales', _buildExtras()),
+                    _section(context, 'Categorías', _buildCategories(cs, tokens)),
+                    _section(context, 'Información básica', _buildBasicInfo(cs, tokens)),
+                    _section(context, 'Descripción', _buildDescription(cs, tokens)),
+                    _section(context, 'Precio y stock', _buildPriceStock(cs, tokens)),
+                    _section(context, 'Variantes / Atributos', _buildVariants(cs, tokens)),
+                    _section(context, 'Imágenes (máx. 4)', _buildImages(cs, tokens)),
+                    _section(context, 'Opciones adicionales', _buildExtras(cs, tokens)),
                     const SizedBox(height: 80),
                   ],
                 ),
@@ -300,21 +296,23 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
     );
   }
 
-  Widget _section(String title, Widget child) {
+  Widget _section(BuildContext context, String title, Widget child) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(
+        Text(title, style: TextStyle(
             fontSize: 12, fontWeight: FontWeight.w700,
-            color: _kSub, letterSpacing: 0.5)),
+            color: tokens.textMuted, letterSpacing: 0.5)),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: _kSurface,
+            color: cs.surface,
             borderRadius: BorderRadius.circular(14),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
+            border: Border.all(color: cs.outline),
           ),
           child: child,
         ),
@@ -323,9 +321,9 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
     );
   }
 
-  Widget _buildCategories() {
+  Widget _buildCategories(ColorScheme cs, AppTokens tokens) {
     if (_allCategories.isEmpty) {
-      return const Text('Sin categorías disponibles', style: TextStyle(color: _kSub));
+      return Text('Sin categorías disponibles', style: TextStyle(color: tokens.textMuted));
     }
     return Wrap(
       spacing: 8,
@@ -336,16 +334,16 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
         final sel  = _selectedCategoryIds.contains(id);
         return FilterChip(
           label: Text(name, style: TextStyle(
-              fontSize: 12, color: sel ? Colors.white : _kText,
+              fontSize: 12, color: sel ? cs.onPrimary : cs.onBackground,
               fontWeight: sel ? FontWeight.w600 : FontWeight.w400)),
           selected: sel,
           onSelected: (_) => setState(() {
             if (sel) _selectedCategoryIds.remove(id);
             else _selectedCategoryIds.add(id);
           }),
-          selectedColor: _kPrimary,
-          backgroundColor: const Color(0xFFF0EBE3),
-          checkmarkColor: Colors.white,
+          selectedColor: cs.primary,
+          backgroundColor: tokens.surfaceAlt,
+          checkmarkColor: cs.onPrimary,
           side: BorderSide.none,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         );
@@ -353,36 +351,38 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
     );
   }
 
-  Widget _buildBasicInfo() {
+  Widget _buildBasicInfo(ColorScheme cs, AppTokens tokens) {
     return Column(
       children: [
-        _field('Nombre del producto', _nameCtrl, required: true),
+        _field('Nombre del producto', _nameCtrl, cs: cs, tokens: tokens, required: true),
         const SizedBox(height: 12),
-        _field('Código (SKU)', _codeCtrl, hint: 'Auto-generado si se deja vacío'),
+        _field('Código (SKU)', _codeCtrl, cs: cs, tokens: tokens, hint: 'Auto-generado si se deja vacío'),
       ],
     );
   }
 
-  Widget _buildDescription() {
+  Widget _buildDescription(ColorScheme cs, AppTokens tokens) {
     return TextFormField(
       controller: _descCtrl,
       minLines: 3,
       maxLines: 6,
-      style: const TextStyle(fontSize: 14, color: _kText),
-      decoration: _inputDeco('Descripción del producto', null),
+      style: TextStyle(fontSize: 14, color: cs.onBackground),
+      decoration: _inputDeco('Descripción del producto', null, cs: cs, tokens: tokens),
     );
   }
 
-  Widget _buildPriceStock() {
+  Widget _buildPriceStock(ColorScheme cs, AppTokens tokens) {
     return Column(
       children: [
         Row(
           children: [
             Expanded(child: _field('Precio (₡)', _priceCtrl,
+                cs: cs, tokens: tokens,
                 keyboardType: TextInputType.number, required: true,
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))])),
             const SizedBox(width: 12),
             Expanded(child: _field('Descuento (%)', _discountCtrl,
+                cs: cs, tokens: tokens,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly])),
           ],
@@ -393,14 +393,15 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
             Expanded(
               child: SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Controla stock', style: TextStyle(fontSize: 14, color: _kText)),
+                title: Text('Controla stock', style: TextStyle(fontSize: 14, color: cs.onBackground)),
                 value: _manageStock,
                 onChanged: (v) => setState(() => _manageStock = v),
-                activeColor: _kPrimary,
+                activeColor: cs.primary,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(child: _field('Stock base', _stockCtrl,
+                cs: cs, tokens: tokens,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly])),
           ],
@@ -409,54 +410,54 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
     );
   }
 
-  Widget _buildVariants() {
+  Widget _buildVariants(ColorScheme cs, AppTokens tokens) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_allAttrs.isEmpty)
-          const Text('No hay tipos de atributo. Creá uno en Gestión de atributos.',
-              style: TextStyle(color: _kSub, fontSize: 13))
+          Text('No hay tipos de atributo. Creá uno en Gestión de atributos.',
+              style: TextStyle(color: tokens.textMuted, fontSize: 13))
         else ...[
-          const Text('Seleccioná un valor para agregar variante:',
-              style: TextStyle(fontSize: 12, color: _kSub)),
+          Text('Seleccioná un valor para agregar variante:',
+              style: TextStyle(fontSize: 12, color: tokens.textMuted)),
           const SizedBox(height: 10),
-          ..._allAttrs.map((attr) => _buildAttrSection(attr)),
+          ..._allAttrs.map((attr) => _buildAttrSection(attr, cs, tokens)),
         ],
         if (_variants.isNotEmpty) ...[
-          const Divider(height: 24),
-          const Text('Variantes del producto',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kText)),
+          Divider(height: 24, color: cs.outline),
+          Text('Variantes del producto',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: cs.onBackground)),
           const SizedBox(height: 8),
           // Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF5EDE0),
+              color: tokens.surfaceAlt,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Expanded(flex: 4, child: Text('Combinación', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _kSub))),
-                Expanded(flex: 3, child: Text('Precio (₡)', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _kSub))),
-                Expanded(flex: 3, child: Text('Stock', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _kSub))),
-                SizedBox(width: 28),
+                Expanded(flex: 4, child: Text('Combinación', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: tokens.textMuted))),
+                Expanded(flex: 3, child: Text('Precio (₡)', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: tokens.textMuted))),
+                Expanded(flex: 3, child: Text('Stock', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: tokens.textMuted))),
+                const SizedBox(width: 28),
               ],
             ),
           ),
           const SizedBox(height: 4),
-          ..._variants.asMap().entries.map((e) => _buildVariantRow(e.key, e.value)),
+          ..._variants.asMap().entries.map((e) => _buildVariantRow(e.key, e.value, cs, tokens)),
         ],
       ],
     );
   }
 
-  Widget _buildAttrSection(AttributeType attr) {
+  Widget _buildAttrSection(AttributeType attr, ColorScheme cs, AppTokens tokens) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(attr.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kPrimary)),
+          Text(attr.name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: cs.primary)),
           const SizedBox(height: 4),
           Wrap(
             spacing: 6,
@@ -467,14 +468,14 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
                 label: Text(val.value,
                     style: TextStyle(
                         fontSize: 11,
-                        color: alreadyAdded ? _kSub : _kPrimary,
+                        color: alreadyAdded ? tokens.textMuted : cs.primary,
                         fontWeight: FontWeight.w500)),
                 avatar: Icon(
                   alreadyAdded ? Icons.check : Icons.add,
                   size: 14,
-                  color: alreadyAdded ? _kSub : _kPrimary,
+                  color: alreadyAdded ? tokens.textMuted : cs.primary,
                 ),
-                backgroundColor: alreadyAdded ? const Color(0xFFF0EBE3) : const Color(0xFFF5EDE0),
+                backgroundColor: tokens.surfaceAlt,
                 side: BorderSide.none,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                 onPressed: alreadyAdded ? null : () => _addVariantFromValue(attr, val),
@@ -486,17 +487,17 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
     );
   }
 
-  Widget _buildVariantRow(int index, _Variant v) {
+  Widget _buildVariantRow(int index, _Variant v, ColorScheme cs, AppTokens tokens) {
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFF0EBE3)),
+        border: Border.all(color: cs.outline),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          Expanded(flex: 4, child: Text(v.label, style: const TextStyle(fontSize: 12, color: _kText))),
+          Expanded(flex: 4, child: Text(v.label, style: TextStyle(fontSize: 12, color: cs.onBackground))),
           Expanded(
             flex: 3,
             child: Padding(
@@ -530,7 +531,7 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.close, size: 18, color: Colors.red),
+            icon: Icon(Icons.close, size: 18, color: cs.error),
             onPressed: () => _removeVariant(index),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -540,13 +541,13 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
     );
   }
 
-  Widget _buildImages() {
+  Widget _buildImages(ColorScheme cs, AppTokens tokens) {
     final total = _existingImages.length + _newImages.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_existingImages.isNotEmpty) ...[
-          const Text('Imágenes actuales:', style: TextStyle(fontSize: 12, color: _kSub)),
+          Text('Imágenes actuales:', style: TextStyle(fontSize: 12, color: tokens.textMuted)),
           const SizedBox(height: 6),
           SizedBox(
             height: 80,
@@ -559,15 +560,15 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
                 child: Image.network(_existingImages[i]['url']?.toString() ?? '',
                     width: 80, height: 80, fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(width: 80, height: 80,
-                        color: const Color(0xFFF0EBE3),
-                        child: const Icon(Icons.image, color: _kAccent))),
+                        color: tokens.surfaceAlt,
+                        child: Icon(Icons.image, color: tokens.textSubtle))),
               ),
             ),
           ),
           const SizedBox(height: 12),
         ],
         if (_newImages.isNotEmpty) ...[
-          const Text('Nuevas imágenes:', style: TextStyle(fontSize: 12, color: _kSub)),
+          Text('Nuevas imágenes:', style: TextStyle(fontSize: 12, color: tokens.textMuted)),
           const SizedBox(height: 6),
           SizedBox(
             height: 80,
@@ -586,7 +587,7 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
                     child: GestureDetector(
                       onTap: () => setState(() => _newImages.removeAt(i)),
                       child: Container(
-                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                        decoration: BoxDecoration(color: cs.error, shape: BoxShape.circle),
                         child: const Icon(Icons.close, size: 14, color: Colors.white),
                       ),
                     ),
@@ -600,40 +601,42 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
         if (total < 4)
           OutlinedButton.icon(
             onPressed: _pickImages,
-            icon: const Icon(Icons.add_photo_alternate_outlined, color: _kPrimary),
+            icon: Icon(Icons.add_photo_alternate_outlined, color: cs.primary),
             label: Text('Agregar imágenes (${4 - total} disponibles)',
-                style: const TextStyle(color: _kPrimary, fontSize: 13)),
+                style: TextStyle(color: cs.primary, fontSize: 13)),
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: _kPrimary),
+              side: BorderSide(color: cs.primary),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           )
         else
-          const Text('Máximo de imágenes alcanzado (4)',
-              style: TextStyle(color: _kSub, fontSize: 12)),
+          Text('Máximo de imágenes alcanzado (4)',
+              style: TextStyle(color: tokens.textMuted, fontSize: 12)),
       ],
     );
   }
 
-  Widget _buildExtras() {
+  Widget _buildExtras(ColorScheme cs, AppTokens tokens) {
     return Column(
       children: [
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Es tendencia', style: TextStyle(fontSize: 14, color: _kText)),
-          subtitle: const Text('Aparece en la sección destacada', style: TextStyle(fontSize: 12, color: _kSub)),
+          title: Text('Es tendencia', style: TextStyle(fontSize: 14, color: cs.onBackground)),
+          subtitle: Text('Aparece en la sección destacada', style: TextStyle(fontSize: 12, color: tokens.textMuted)),
           value: _trending,
           onChanged: (v) => setState(() => _trending = v),
-          activeColor: _kPrimary,
+          activeColor: cs.primary,
         ),
-        const Divider(height: 1),
+        Divider(height: 1, color: cs.outline),
         const SizedBox(height: 12),
-        _field('Meta keywords (SEO)', _keywordsCtrl, hint: 'Ej: ropa, mujer, talla M'),
+        _field('Meta keywords (SEO)', _keywordsCtrl, cs: cs, tokens: tokens, hint: 'Ej: ropa, mujer, talla M'),
       ],
     );
   }
 
   Widget _field(String label, TextEditingController ctrl, {
+    required ColorScheme cs,
+    required AppTokens tokens,
     bool required = false,
     String? hint,
     TextInputType keyboardType = TextInputType.text,
@@ -643,26 +646,30 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
       controller: ctrl,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-      style: const TextStyle(fontSize: 14, color: _kText),
+      style: TextStyle(fontSize: 14, color: cs.onBackground),
       validator: required ? (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null : null,
-      decoration: _inputDeco(label, hint),
+      decoration: _inputDeco(label, hint, cs: cs, tokens: tokens),
     );
   }
 
-  InputDecoration _inputDeco(String label, String? hint) => InputDecoration(
+  InputDecoration _inputDeco(String label, String? hint, {required ColorScheme cs, required AppTokens tokens}) => InputDecoration(
     labelText: label,
     hintText: hint,
-    labelStyle: const TextStyle(color: _kSub, fontSize: 13),
-    hintStyle: const TextStyle(color: Color(0xFFBBBBBB), fontSize: 13),
+    labelStyle: TextStyle(color: tokens.textMuted, fontSize: 13),
+    hintStyle: TextStyle(color: tokens.textMuted.withOpacity(0.6), fontSize: 13),
     filled: true,
-    fillColor: const Color(0xFFF8F4F0),
+    fillColor: cs.surface,
     isDense: true,
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFFE5DDD5))),
-    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFFE5DDD5))),
-    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: _kPrimary, width: 1.5)),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: BorderSide(color: cs.outline)),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: BorderSide(color: cs.outline)),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: BorderSide(color: cs.primary, width: 1.5)),
+    errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: BorderSide(color: cs.error)),
+    focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: BorderSide(color: cs.error, width: 1.5)),
   );
 }

@@ -4,15 +4,10 @@ import 'package:ecommerce_flutter/src/domain/utils/PriceFormatter.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/bloc/ClientShoppingBagBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/bloc/ClientShoppingBagEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/ShoppingBag/bloc/ClientShoppingBagState.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
-const _kAccent  = Color(0xFF8B6F47);
-const _kPrimary = Color(0xFF2D2D2D);
-const _kSub     = Color(0xFF757575);
-const _kDivider = Color(0xFFEEEEEE);
-
 class ClientShoppingBagItem extends StatelessWidget {
-
   final ClientShoppingBagBloc? bloc;
   final ClientShoppingBagState state;
   final Product? product;
@@ -21,38 +16,38 @@ class ClientShoppingBagItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     final p = product;
     if (p == null) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(color: Color(0x0D000000), blurRadius: 6, offset: Offset(0, 2)),
-        ],
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: cs.outline),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildImage(p),
+            _buildImage(p, tokens),
             const SizedBox(width: 12),
-            Expanded(child: _buildInfo(p)),
+            Expanded(child: _buildInfo(p, cs, tokens)),
             const SizedBox(width: 8),
-            _buildPriceAndDelete(p),
+            _buildPriceAndDelete(p, cs, tokens),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildImage(Product p) {
+  Widget _buildImage(Product p, AppTokens tokens) {
     final url = p.image1;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: SizedBox(
         width: 72,
         height: 80,
@@ -60,20 +55,20 @@ class ClientShoppingBagItem extends StatelessWidget {
             ? CachedNetworkImage(
                 imageUrl: url,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(color: const Color(0xFFF5F5F5)),
-                errorWidget: (_, __, ___) => _placeholder(),
+                placeholder: (_, __) => Container(color: tokens.surfaceAlt),
+                errorWidget: (_, __, ___) => _placeholder(tokens),
               )
-            : _placeholder(),
+            : _placeholder(tokens),
       ),
     );
   }
 
-  Widget _placeholder() => Container(
-    color: const Color(0xFFF5F5F5),
-    child: const Center(child: Icon(Icons.image_outlined, color: Color(0xFFBDBDBD), size: 28)),
-  );
+  Widget _placeholder(AppTokens tokens) => Container(
+        color: tokens.surfaceAlt,
+        child: Center(child: Icon(Icons.image_outlined, color: tokens.textSubtle, size: 28)),
+      );
 
-  Widget _buildInfo(Product p) {
+  Widget _buildInfo(Product p, ColorScheme cs, AppTokens tokens) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -81,101 +76,104 @@ class ClientShoppingBagItem extends StatelessWidget {
           p.name,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: _kPrimary,
-          ),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onBackground),
         ),
         if (p.selectedVariant != null && p.selectedVariant!.isNotEmpty) ...[
           const SizedBox(height: 3),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: _kAccent.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: _kAccent.withOpacity(0.3)),
+              color: cs.primary.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              border: Border.all(color: cs.primary.withOpacity(0.3)),
             ),
             child: Text(
               p.selectedVariant!,
-              style: const TextStyle(fontSize: 10, color: _kAccent, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 10, color: cs.primary, fontWeight: FontWeight.w500),
             ),
           ),
         ],
         const SizedBox(height: 8),
-        _buildQtyControls(p),
+        _buildQtyControls(p, cs, tokens),
       ],
     );
   }
 
-  Widget _buildQtyControls(Product p) {
+  Widget _buildQtyControls(Product p, ColorScheme cs, AppTokens tokens) {
     final atLimit = p.isAtStockLimit;
     return Row(
       children: [
-        _qtyBtn(
-          icon: Icons.remove,
-          onTap: () => bloc?.add(SubtractItem(product: p)),
-        ),
+        _qtyBtn(icon: Icons.remove, onTap: () => bloc?.add(SubtractItem(product: p)), cs: cs, tokens: tokens),
         Container(
           width: 32,
-          height: 30,
+          height: 32,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F5),
-            borderRadius: BorderRadius.circular(4),
+            color: tokens.surfaceAlt,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: cs.outline),
           ),
           child: Text(
             '${p.quantity ?? 1}',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _kPrimary),
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onBackground),
           ),
         ),
         _qtyBtn(
           icon: Icons.add,
           onTap: atLimit ? null : () => bloc?.add(AddItem(product: p)),
           disabled: atLimit,
+          cs: cs,
+          tokens: tokens,
         ),
         if (atLimit)
-          const Padding(
-            padding: EdgeInsets.only(left: 6),
-            child: Text('máx', style: TextStyle(fontSize: 10, color: Color(0xFFEF4444))),
+          Padding(
+            padding: const EdgeInsets.only(left: 6),
+            child: Text('máx', style: TextStyle(fontSize: 10, color: cs.error)),
           ),
       ],
     );
   }
 
-  Widget _qtyBtn({required IconData icon, VoidCallback? onTap, bool disabled = false}) {
+  Widget _qtyBtn({
+    required IconData icon,
+    VoidCallback? onTap,
+    bool disabled = false,
+    required ColorScheme cs,
+    required AppTokens tokens,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 30,
-        height: 30,
+        width: 32,
+        height: 32,
         decoration: BoxDecoration(
-          color: disabled ? const Color(0xFFEEEEEE) : const Color(0xFFF5F5F5),
-          borderRadius: BorderRadius.circular(4),
+          color: disabled ? tokens.surfaceAlt : cs.surface,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          border: Border.all(color: cs.outline),
         ),
-        child: Icon(icon, size: 15, color: disabled ? const Color(0xFFBDBDBD) : _kPrimary),
+        child: Icon(
+          icon,
+          size: 15,
+          color: disabled ? tokens.textSubtle : cs.onBackground,
+        ),
       ),
     );
   }
 
-  Widget _buildPriceAndDelete(Product p) {
+  Widget _buildPriceAndDelete(Product p, ColorScheme cs, AppTokens tokens) {
     final lineTotal = p.effectivePrice * (p.quantity ?? 1);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Text(
           '₡${fmtPrice(lineTotal)}',
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: _kAccent,
-          ),
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: cs.primary),
         ),
         if (p.variantPrice != null && p.variantPrice! > 0) ...[
           const SizedBox(height: 2),
           Text(
             '₡${fmtPrice(p.effectivePrice)} c/u',
-            style: const TextStyle(fontSize: 10, color: _kSub),
+            style: TextStyle(fontSize: 10, color: tokens.textMuted),
           ),
         ],
         const SizedBox(height: 8),
@@ -184,10 +182,10 @@ class ClientShoppingBagItem extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(6),
+              color: cs.error.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            child: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+            child: Icon(Icons.delete_outline, color: cs.error, size: 18),
           ),
         ),
       ],

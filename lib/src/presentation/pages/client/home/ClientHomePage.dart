@@ -8,12 +8,9 @@ import 'package:ecommerce_flutter/src/presentation/pages/client/home/bloc/Client
 import 'package:ecommerce_flutter/src/presentation/pages/client/home/bloc/ClientHomeState.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/order/list/ClientOrderListPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/profile/info/ProfileInfoPage.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-const _kAccent  = Color(0xFF8B6F47);
-const _kPrimary = Color(0xFF2D2D2D);
-const _kBg      = Color(0xFFFAFAFA);
 
 class ClientHomePage extends StatefulWidget {
   const ClientHomePage({super.key});
@@ -43,22 +40,18 @@ class _ClientHomePageState extends State<ClientHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     _bloc = BlocProvider.of<ClientHomeBloc>(context);
 
     return BlocBuilder<ClientHomeBloc, ClientHomeState>(
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: _kBg,
           appBar: AppBar(
-            backgroundColor: Colors.white,
             elevation: 0,
             title: Text(
               _titles[state.pageIndex],
-              style: const TextStyle(
-                color: _kPrimary,
-                fontWeight: FontWeight.w700,
-                fontSize: 20,
-              ),
+              style: TextStyle(color: cs.onBackground, fontWeight: FontWeight.w700, fontSize: 20),
             ),
             actions: [
               ValueListenableBuilder<int>(
@@ -67,12 +60,9 @@ class _ClientHomePageState extends State<ClientHomePage> {
                   clipBehavior: Clip.none,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.shopping_bag_outlined, color: _kPrimary),
-                      onPressed: () =>
-                          Navigator.pushNamed(context, 'client/shopping_bag')
-                              .then((_) {
-                            context.read<ClientShoppingBagBloc>().add(GetShoppingBag());
-                          }),
+                      icon: Icon(Icons.shopping_bag_outlined, color: cs.onBackground),
+                      onPressed: () => Navigator.pushNamed(context, 'client/shopping_bag')
+                          .then((_) { context.read<ClientShoppingBagBloc>().add(GetShoppingBag()); }),
                       tooltip: 'Carrito',
                     ),
                     if (count > 0)
@@ -80,18 +70,12 @@ class _ClientHomePageState extends State<ClientHomePage> {
                         right: 6,
                         top: 6,
                         child: Container(
-                          width: 17,
-                          height: 17,
-                          decoration: const BoxDecoration(
-                              color: _kAccent, shape: BoxShape.circle),
+                          width: 17, height: 17,
+                          decoration: BoxDecoration(color: cs.primary, shape: BoxShape.circle),
                           child: Center(
                             child: Text(
                               count > 9 ? '9+' : '$count',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                              ),
+                              style: TextStyle(color: cs.onPrimary, fontSize: 9, fontWeight: FontWeight.w700),
                             ),
                           ),
                         ),
@@ -100,8 +84,9 @@ class _ClientHomePageState extends State<ClientHomePage> {
                 ),
               ),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Color(0xFF6B6B6B)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                icon: Icon(Icons.more_vert, color: tokens.textMuted),
+                color: cs.surface,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                 onSelected: (value) {
                   if (value == 'logout') {
                     _bloc?.add(Logout());
@@ -113,14 +98,13 @@ class _ClientHomePageState extends State<ClientHomePage> {
                   }
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'logout',
                     child: Row(
                       children: [
-                        Icon(Icons.logout, size: 18, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Cerrar sesión',
-                            style: TextStyle(color: Colors.red, fontSize: 13)),
+                        Icon(Icons.logout, size: 18, color: cs.error),
+                        const SizedBox(width: 8),
+                        Text('Cerrar sesión', style: TextStyle(color: cs.error, fontSize: 13)),
                       ],
                     ),
                   ),
@@ -134,26 +118,12 @@ class _ClientHomePageState extends State<ClientHomePage> {
           ),
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, -2),
-                ),
-              ],
+              color: cs.background,
+              border: Border(top: BorderSide(color: cs.outline)),
             ),
             child: BottomNavigationBar(
               currentIndex: state.pageIndex,
               onTap: (i) => _bloc?.add(ChangeDrawerPage(pageIndex: i)),
-              backgroundColor: Colors.white,
-              selectedItemColor: _kAccent,
-              unselectedItemColor: const Color(0xFF9E9E9E),
-              selectedLabelStyle:
-                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-              unselectedLabelStyle: const TextStyle(fontSize: 11),
-              elevation: 0,
-              type: BottomNavigationBarType.fixed,
               items: const [
                 BottomNavigationBarItem(
                   icon: Icon(Icons.category_outlined),

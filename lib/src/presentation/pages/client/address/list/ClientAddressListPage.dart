@@ -5,13 +5,10 @@ import 'package:ecommerce_flutter/src/presentation/pages/client/address/list/Cli
 import 'package:ecommerce_flutter/src/presentation/pages/client/address/list/bloc/ClientAddressListBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/address/list/bloc/ClientAddressListEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/client/address/list/bloc/ClientAddressListState.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-
-const _kAccent  = Color(0xFF8B6F47);
-const _kPrimary = Color(0xFF2D2D2D);
-const _kSub     = Color(0xFF757575);
 
 class ClientAddressListPage extends StatefulWidget {
   const ClientAddressListPage({super.key});
@@ -34,17 +31,16 @@ class _ClientAddressListPageState extends State<ClientAddressListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     _bloc = BlocProvider.of<ClientAddressListBloc>(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Dirección de entrega',
-          style: TextStyle(color: _kPrimary, fontWeight: FontWeight.w700),
+          style: TextStyle(color: cs.onBackground, fontWeight: FontWeight.w700),
         ),
-        iconTheme: const IconThemeData(color: _kPrimary),
         actions: [
           IconButton(
             onPressed: () {
@@ -52,7 +48,7 @@ class _ClientAddressListPageState extends State<ClientAddressListPage> {
                 _bloc?.add(GetUserAddress());
               });
             },
-            icon: const Icon(Icons.add_location_alt_outlined, color: _kAccent),
+            icon: Icon(Icons.add_location_alt_outlined, color: cs.primary),
             tooltip: 'Nueva dirección',
           ),
         ],
@@ -62,10 +58,8 @@ class _ClientAddressListPageState extends State<ClientAddressListPage> {
           final responseState = state.response;
           if (responseState is Success) {
             if (responseState.data is bool) {
-              // Address deleted → reload list
               _bloc?.add(GetUserAddress());
             } else if (responseState.data is Order) {
-              // Order created successfully
               final order = responseState.data as Order;
               _showOrderSuccessDialog(context, order);
             }
@@ -74,7 +68,7 @@ class _ClientAddressListPageState extends State<ClientAddressListPage> {
             Fluttertoast.showToast(
                 msg: responseState.message,
                 toastLength: Toast.LENGTH_LONG,
-                backgroundColor: Colors.red[700]);
+                backgroundColor: cs.error);
           }
         },
         child: Stack(
@@ -83,8 +77,7 @@ class _ClientAddressListPageState extends State<ClientAddressListPage> {
               builder: (context, state) {
                 final responseState = state.response;
                 if (responseState is Loading) {
-                  return const Center(
-                      child: CircularProgressIndicator(color: _kAccent));
+                  return Center(child: CircularProgressIndicator(color: cs.primary));
                 }
                 if (responseState is Success && responseState.data is List<Address>) {
                   final List<Address> addresses =
@@ -92,28 +85,27 @@ class _ClientAddressListPageState extends State<ClientAddressListPage> {
                   _bloc?.add(SetAddressSession(addressList: addresses));
 
                   if (addresses.isEmpty) {
-                    return _buildEmptyState(context);
+                    return _buildEmptyState(context, cs, tokens);
                   }
 
                   return Column(
                     children: [
-                      // Header
                       Container(
                         margin: const EdgeInsets.all(16),
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: _kAccent.withOpacity(0.08),
+                          color: cs.primary.withOpacity(0.06),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: _kAccent.withOpacity(0.25)),
+                          border: Border.all(color: cs.primary.withOpacity(0.25)),
                         ),
                         child: Row(
-                          children: const [
-                            Icon(Icons.info_outline, color: _kAccent, size: 18),
-                            SizedBox(width: 10),
+                          children: [
+                            Icon(Icons.info_outline, color: cs.primary, size: 18),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 'Seleccioná la dirección donde querés recibir tu pedido',
-                                style: TextStyle(fontSize: 12, color: _kAccent),
+                                style: TextStyle(fontSize: 12, color: cs.primary),
                               ),
                             ),
                           ],
@@ -137,10 +129,10 @@ class _ClientAddressListPageState extends State<ClientAddressListPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.error_outline, size: 48, color: _kSub),
+                        Icon(Icons.error_outline, size: 48, color: tokens.textMuted),
                         const SizedBox(height: 12),
                         Text(responseState.message,
-                            style: const TextStyle(color: _kSub)),
+                            style: TextStyle(color: tokens.textMuted)),
                         const SizedBox(height: 12),
                         ElevatedButton(
                           onPressed: () => _bloc?.add(GetUserAddress()),
@@ -150,11 +142,9 @@ class _ClientAddressListPageState extends State<ClientAddressListPage> {
                     ),
                   );
                 }
-                return const Center(
-                    child: CircularProgressIndicator(color: _kAccent));
+                return Center(child: CircularProgressIndicator(color: cs.primary));
               },
             ),
-            // Loading overlay while creating order
             BlocBuilder<ClientAddressListBloc, ClientAddressListState>(
               builder: (context, state) {
                 if (!state.isCreatingOrder) return const SizedBox.shrink();
@@ -186,13 +176,6 @@ class _ClientAddressListPageState extends State<ClientAddressListPage> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: canOrder ? _kPrimary : Colors.grey[300],
-                  foregroundColor: canOrder ? Colors.white : Colors.grey[600],
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
                 icon: const Icon(Icons.check_circle_outline, size: 20),
                 onPressed: canOrder && !state.isCreatingOrder
                     ? () => _bloc?.add(OnConfirmOrder())
@@ -214,33 +197,27 @@ class _ClientAddressListPageState extends State<ClientAddressListPage> {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, ColorScheme cs, AppTokens tokens) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.location_off_outlined, size: 72, color: Colors.grey[300]),
+          Icon(Icons.location_off_outlined, size: 72, color: tokens.textSubtle),
           const SizedBox(height: 16),
           Text(
             'No tenés direcciones guardadas',
             style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[600],
+                color: cs.onBackground,
                 fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 8),
           Text(
             'Agregá una para continuar con tu pedido',
-            style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+            style: TextStyle(fontSize: 13, color: tokens.textMuted),
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _kAccent,
-              foregroundColor: Colors.white,
-              shape:
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
             icon: const Icon(Icons.add_location_alt_outlined, size: 18),
             onPressed: () {
               Navigator.pushNamed(context, 'client/address/create').then((_) {
@@ -256,10 +233,13 @@ class _ClientAddressListPageState extends State<ClientAddressListPage> {
   }
 
   void _showOrderSuccessDialog(BuildContext context, Order order) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<AppTokens>()!;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
+        backgroundColor: cs.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         contentPadding: const EdgeInsets.all(24),
         content: Column(
@@ -268,36 +248,30 @@ class _ClientAddressListPageState extends State<ClientAddressListPage> {
             Container(
               width: 72,
               height: 72,
-              decoration: const BoxDecoration(
-                color: Color(0xFFE8F5E9),
+              decoration: BoxDecoration(
+                color: tokens.success.withOpacity(0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_circle, color: Color(0xFF43A047), size: 42),
+              child: Icon(Icons.check_circle, color: tokens.success, size: 42),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               '¡Pedido confirmado!',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF2D2D2D)),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onBackground),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'Tu pedido #${order.id} fue recibido y está siendo procesado.',
-              style: const TextStyle(fontSize: 13, color: Color(0xFF757575), height: 1.5),
+              style: TextStyle(fontSize: 13, color: tokens.textMuted, height: 1.5),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2D2D2D),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                ),
                 onPressed: () {
                   Navigator.pop(ctx);
-                  // Navigate to order detail
                   Navigator.pushReplacementNamed(
                       context, 'client/order/detail',
                       arguments: order);
