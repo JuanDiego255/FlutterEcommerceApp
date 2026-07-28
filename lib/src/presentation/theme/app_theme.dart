@@ -125,7 +125,17 @@ class AppTokens extends ThemeExtension<AppTokens> {
 class AppTheme {
   AppTheme._();
 
-  static ThemeData dark() {
+  /// Tema Oscuro Premium. [accent] permite teñir el acento con el color de
+  /// marca del tenant (función premium 'branding'); null usa el dorado por
+  /// defecto. El color "sobre acento" se calcula por luminancia para que el
+  /// texto de los botones siga siendo legible con cualquier marca.
+  static ThemeData dark({Color? accent}) {
+    final Color accentColor = accent ?? AppColors.accent;
+    final Color onAccent = accent == null
+        ? AppColors.onAccent
+        : (accentColor.computeLuminance() > 0.35
+            ? AppColors.onAccent
+            : Colors.white);
     final base = ThemeData.dark(useMaterial3: true);
     final textTheme = GoogleFonts.interTextTheme(base.textTheme).copyWith(
       displayLarge: GoogleFonts.inter(
@@ -162,12 +172,12 @@ class AppTheme {
       brightness: Brightness.dark,
       scaffoldBackgroundColor: AppColors.bg,
       canvasColor: AppColors.bg,
-      colorScheme: const ColorScheme.dark(
+      colorScheme: ColorScheme.dark(
         brightness: Brightness.dark,
-        primary: AppColors.accent,
-        onPrimary: AppColors.onAccent,
-        secondary: AppColors.accent,
-        onSecondary: AppColors.onAccent,
+        primary: accentColor,
+        onPrimary: onAccent,
+        secondary: accentColor,
+        onSecondary: onAccent,
         surface: AppColors.surface,
         onSurface: AppColors.textPrimary,
         background: AppColors.bg,
@@ -192,8 +202,8 @@ class AppTheme {
 
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.accent,
-          foregroundColor: AppColors.onAccent,
+          backgroundColor: accentColor,
+          foregroundColor: onAccent,
           minimumSize: const Size.fromHeight(52),
           textStyle: GoogleFonts.inter(
             fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.2,
@@ -232,11 +242,11 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.accent, width: 1),
+          borderSide: BorderSide(color: accentColor, width: 1),
         ),
       ),
 
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: 0,
         margin: EdgeInsets.zero,
@@ -256,9 +266,9 @@ class AppTheme {
         showDragHandle: true,
       ),
 
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.bg,
-        selectedItemColor: AppColors.accent,
+        selectedItemColor: accentColor,
         unselectedItemColor: AppColors.textMuted,
         type: BottomNavigationBarType.fixed,
         elevation: 0,
@@ -267,7 +277,7 @@ class AppTheme {
 
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surface,
-        selectedColor: AppColors.accent,
+        selectedColor: accentColor,
         labelStyle: GoogleFonts.inter(
           color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500,
         ),

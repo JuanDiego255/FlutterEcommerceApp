@@ -1,8 +1,11 @@
 import 'package:app_links/app_links.dart';
 import 'package:ecommerce_flutter/injection.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/CartNotifier.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistNotifier.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/remote/services/TenantDirectoryService.dart';
+import 'package:ecommerce_flutter/src/domain/models/TenantConfig.dart';
 import 'package:ecommerce_flutter/src/blocProviders.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/admin/category/create/AdminCategoryCreatePage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/admin/category/update/AdminCategoryUpdatePage.dart';
@@ -12,6 +15,10 @@ import 'package:ecommerce_flutter/src/presentation/pages/admin/product/create/Ad
 import 'package:ecommerce_flutter/src/presentation/pages/admin/product/list/AdminProductListPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/admin/product/update/AdminProductUpdatePage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/LoginPage.dart';
+import 'package:ecommerce_flutter/src/presentation/pages/barber/agenda/BarberAgendaPage.dart';
+import 'package:ecommerce_flutter/src/presentation/pages/barber/booking/BarberBookingPage.dart';
+import 'package:ecommerce_flutter/src/presentation/pages/barber/bookings/MyBookingsPage.dart';
+import 'package:ecommerce_flutter/src/presentation/pages/barber/home/BarberHomePage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/register/RegisterPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/detail/CatalogProductDetailPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/catalog/home/CatalogHomePage.dart';
@@ -35,16 +42,21 @@ import 'package:ecommerce_flutter/src/presentation/pages/legal/LegalPage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/profile/update/ProfileUpdatePage.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/roles/RolesPage.dart';
 import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/theme_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await configureDependencies();
+  // Nombres de días/meses en español para DateFormat(..., 'es').
+  await initializeDateFormatting('es');
   await TenantSession.initialize();
   await SecureStorageService.initializeCache();
   await WishlistNotifier.instance.reload();
+  ThemeController.syncFromSession();
   runApp(const MyApp());
 }
 
@@ -67,10 +79,51 @@ class _MyAppState extends State<MyApp> {
 
   void _listenToLinks() {
     _appLinks.uriLinkStream.listen((Uri? uri) {
-      if (uri != null && uri.toString().contains('/success')) {
+      if (uri == null) return;
+      if (uri.toString().contains('/success')) {
         navigatorKey.currentState?.pushNamed('client/home');
+        return;
+      }
+      // QR del local: myapp://tenant/{id} — abre directo esa tienda
+      // (feature premium qr_deeplink del tenant destino).
+      if (uri.scheme == 'myapp' &&
+          uri.host == 'tenant' &&
+          uri.pathSegments.isNotEmpty) {
+        _openTenantFromLink(uri.pathSegments.first);
       }
     });
+  }
+
+  Future<void> _openTenantFromLink(String tenantId) async {
+    try {
+      final tenants = await TenantDirectoryService().fetch();
+      final matches = tenants.where((t) => t.id == tenantId).toList();
+      if (matches.isEmpty) return;
+      final t = matches.first;
+      if (!t.features.contains('qr_deeplink')) return;
+
+      final changed =
+          TenantSession.isConfigured && TenantSession.host != t.domain;
+      if (changed) {
+        await SecureStorageService.clearAll();
+      }
+      await TenantSession.save(TenantConfig(
+        domain: t.domain,
+        type: t.type,
+        colorHex: t.colorHex,
+        features: t.features,
+      ));
+      // El QR del local deja la tienda como predeterminada.
+      await TenantSession.setDefaultEnabled(true);
+      CartNotifier.instance.update(0);
+      await WishlistNotifier.instance.reload();
+      ThemeController.syncFromSession();
+
+      navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          TenantSession.homeRoute, (route) => false);
+    } catch (_) {
+      // enlace inválido o sin red: se ignora silenciosamente
+    }
   }
 
   // This widget is the root of your application.
@@ -78,19 +131,31 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: blocProviders,
-      child: MaterialApp(
+      child: ValueListenableBuilder<Color?>(
+        valueListenable: ThemeController.accent,
+        builder: (context, accent, child) => MaterialApp(
         builder: FToastBuilder(),
         navigatorKey: navigatorKey,
         debugShowCheckedModeBanner: false,
         title: 'SafeWor Solutions',
-        theme: AppTheme.dark(),
-        initialRoute: TenantSession.isConfigured ? 'catalog/home' : 'tenant/select',
+        // Acento de marca del tenant (feature premium 'branding') o el
+        // dorado Oscuro Premium por defecto.
+        theme: AppTheme.dark(accent: accent),
+        // El selector solo se salta si el usuario marcó la tienda como
+        // predeterminada; el home depende de la vertical (ecommerce/barbería).
+        initialRoute: (TenantSession.isConfigured && TenantSession.defaultEnabled)
+            ? TenantSession.homeRoute
+            : 'tenant/select',
         routes: {
           'tenant/select': (BuildContext context) => const TenantSelectPage(),
           'admin/token': (BuildContext context) => const AdminTokenPage(),
           'login': (BuildContext context) => LoginPage(),
           'register': (BuildContext context) => RegisterPage(),
           'catalog/home': (BuildContext context) => const CatalogHomePage(),
+          'barber/home': (BuildContext context) => const BarberHomePage(),
+          'barber/booking': (BuildContext context) => const BarberBookingPage(),
+          'barber/my-bookings': (BuildContext context) => const MyBookingsPage(),
+          'barber/agenda': (BuildContext context) => const BarberAgendaPage(),
           'catalog/products': (BuildContext context) => const CatalogProductListPage(),
           'catalog/product/detail': (BuildContext context) => const CatalogProductDetailPage(),
           'catalog/wishlist': (BuildContext context) => const WishlistPage(),
@@ -117,6 +182,7 @@ class _MyAppState extends State<MyApp> {
           'checkout/guest': (BuildContext context) => const GuestCheckoutPage(),
           'legal': (BuildContext context) => const LegalPage(),
         },
+        ),
       ),
     );
   }

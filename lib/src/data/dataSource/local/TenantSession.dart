@@ -8,18 +8,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// Sensitive data (appToken) lives exclusively in [SecureStorageService]
 /// (iOS Keychain / Android EncryptedSharedPreferences).
-/// Non-sensitive data (domain) lives in plain SharedPreferences.
+/// Non-sensitive data (domain, type, default flag) lives in plain
+/// SharedPreferences.
 class TenantSession {
   TenantSession._();
 
   static const String _kKey = 'tenant_config_v1';
+  static const String _kDefaultKey = 'tenant_default_v1';
   static TenantConfig? _config;
+  static bool _defaultEnabled = false;
 
   /// Loads tenant config from SharedPreferences and the app token from
   /// SecureStorageService. Automatically migrates any legacy app token found
   /// in SharedPreferences to the secure keychain.
   static Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
+    _defaultEnabled = prefs.getBool(_kDefaultKey) ?? false;
     final raw = prefs.getString(_kKey);
     if (raw == null) return;
 
@@ -37,10 +41,7 @@ class TenantSession {
       // ── Load appToken from secure storage ──────────────────────────────────
       final appToken = await SecureStorageService.getAppToken();
 
-      _config = TenantConfig(
-        domain: map['domain'] as String? ?? '',
-        appToken: appToken,
-      );
+      _config = TenantConfig.fromJson(map).copyWith(appToken: appToken);
     } catch (_) {
       _config = null;
     }
@@ -57,18 +58,57 @@ class TenantSession {
     await prefs.setString(_kKey, json.encode(config.toJson()));
   }
 
+  /// Marca (o desmarca) la tienda actual como predeterminada: al abrir la
+  /// app se salta el selector y entra directo al home de la tienda.
+  static Future<void> setDefaultEnabled(bool enabled) async {
+    _defaultEnabled = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kDefaultKey, enabled);
+  }
+
   /// Clears the full session from both SharedPreferences and SecureStorageService.
   static Future<void> clear() async {
     _config = null;
+    _defaultEnabled = false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kKey);
+    await prefs.remove(_kDefaultKey);
     await prefs.remove('user');
     await SecureStorageService.clearAll();
   }
 
+  /// Refresca las funciones premium (y opcionalmente el color de marca) del
+  /// tenant activo — la fuente de verdad es la BD central, así que la app
+  /// las actualiza cada vez que el backend las publica (p. ej. al cargar el
+  /// home de barbería).
+  static Future<void> updateFeatures(List<String> features,
+      {String? colorHex}) async {
+    final current = _config;
+    if (current == null) return;
+    await save(current.copyWith(
+      features: features,
+      colorHex: colorHex ?? current.colorHex,
+    ));
+  }
+
   static bool    get isConfigured   => _config != null && _config!.domain.isNotEmpty;
+  static bool    get defaultEnabled => _defaultEnabled;
   static bool    get hasAdminAccess => _config?.appToken?.isNotEmpty ?? false;
   static String  get host           => _config?.domain ?? '';
   static String? get appToken       => _config?.appToken;
+  static String  get appType        => _config?.type ?? 'ecommerce';
+  static bool    get isBarbershop   => appType == 'barbershop';
   static TenantConfig? get config   => _config;
+
+  /// Funciones premium del tenant activo (claves del catálogo central).
+  static List<String> get features => _config?.features ?? const [];
+  static bool hasFeature(String key) => features.contains(key);
+
+  /// Color de marca del tenant, solo si la función premium 'branding'
+  /// está activa. Null → la app usa el acento dorado por defecto.
+  static String? get brandColorHex =>
+      hasFeature('branding') ? _config?.colorHex : null;
+
+  /// Ruta home según la vertical del tenant activo.
+  static String get homeRoute => isBarbershop ? 'barber/home' : 'catalog/home';
 }

@@ -1,65 +1,20 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/CartNotifier.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/SecureStorageService.dart';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/WishlistNotifier.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/remote/services/TenantDirectoryService.dart';
 import 'package:ecommerce_flutter/src/domain/models/TenantConfig.dart';
+import 'package:ecommerce_flutter/src/domain/models/TenantOption.dart';
 import 'package:ecommerce_flutter/src/presentation/theme/app_theme.dart';
+import 'package:ecommerce_flutter/src/presentation/theme/theme_controller.dart';
 import 'package:flutter/material.dart';
 
-// ─── Tenant registry ─────────────────────────────────────────────────────────
-
-class _Tenant {
-  final String name;
-  final String subtitle;
-  final String location;
-  final String domain;
-  final IconData icon;
-  final Color color;
-  const _Tenant({
-    required this.name,
-    required this.subtitle,
-    required this.location,
-    required this.domain,
-    required this.icon,
-    required this.color,
-  });
-}
-
-const _kTenants = [
-  _Tenant(
-    name: 'Mitai CR',
-    subtitle: 'Ropa y accesorios para bebé',
-    location: 'Grecia, Alajuela',
-    domain: 'mitaicr.com',
-    icon: Icons.child_care_outlined,
-    color: Color(0xFFE91E8C),
-  ),
-  _Tenant(
-    name: 'Mueblería Sarchi',
-    subtitle: 'Muebles y decoración artesanal',
-    location: 'Sarchí, Alajuela',
-    domain: 'muebleriasarchi.com',
-    icon: Icons.chair_outlined,
-    color: Color(0xFF795548),
-  ),
-  _Tenant(
-    name: 'Solo Ciclismo',
-    subtitle: 'Equipos y accesorios de ciclismo',
-    location: 'Guápiles, Limón',
-    domain: 'solociclismocrc.safeworsolutions.com',
-    icon: Icons.directions_bike_outlined,
-    color: Color(0xFF1565C0),
-  ),
-  _Tenant(
-    name: 'FUT Store',
-    subtitle: 'Tienda de fútbol y deportes',
-    location: 'Grecia, Alajuela',
-    domain: 'futstorecr.safeworsolutions.com',
-    icon: Icons.sports_soccer_outlined,
-    color: Color(0xFF2E7D32),
-  ),
-];
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
+/// Selector de tiendas.
+///
+/// La lista es dinámica: viene del directorio central
+/// (`GET /api/app/tenants`, tenants con app_enabled), con caché local y
+/// lista de respaldo — ver [TenantDirectoryService].
 class TenantSelectPage extends StatefulWidget {
   const TenantSelectPage({super.key});
 
@@ -68,16 +23,89 @@ class TenantSelectPage extends StatefulWidget {
 }
 
 class _TenantSelectPageState extends State<TenantSelectPage> {
-  _Tenant? _selected;
+  final TenantDirectoryService _directory = TenantDirectoryService();
+
+  List<TenantOption>? _tenants;
+  bool _fetchFailed = false;
+  TenantOption? _selected;
+  bool _useAsDefault = false;
   bool _loading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadTenants();
+  }
+
+  Future<void> _loadTenants() async {
+    setState(() {
+      _tenants = null;
+      _selected = null;
+      _fetchFailed = false;
+    });
+    try {
+      final list = await _directory.fetch();
+      if (!mounted) return;
+      setState(() {
+        _tenants = list;
+        _fetchFailed = list.isEmpty;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _tenants = [];
+        _fetchFailed = true;
+      });
+    }
+  }
+
   Future<void> _enter() async {
-    if (_selected == null || _loading) return;
+    final selected = _selected;
+    if (selected == null || _loading) return;
     setState(() => _loading = true);
-    await TenantSession.save(TenantConfig(domain: _selected!.domain));
+
+    // Cambio de tienda: limpiar credenciales y wishlist del tenant anterior
+    // para no arrastrar sesión/estado de otra tienda.
+    final changedTenant =
+        TenantSession.isConfigured && TenantSession.host != selected.domain;
+    if (changedTenant) {
+      await SecureStorageService.clearAll();
+    }
+
+    await TenantSession.save(TenantConfig(
+      domain: selected.domain,
+      type: selected.type,
+      colorHex: selected.colorHex,
+      features: selected.features,
+    ));
+    await TenantSession.setDefaultEnabled(_useAsDefault);
     CartNotifier.instance.update(0);
+    await WishlistNotifier.instance.reload();
+    ThemeController.syncFromSession();
+
     if (!mounted) return;
-    Navigator.pushReplacementNamed(context, 'catalog/home');
+    Navigator.pushReplacementNamed(context, TenantSession.homeRoute);
+  }
+
+  // ─── Presentación por tipo ──────────────────────────────────────────────
+
+  IconData _iconFor(TenantOption t) =>
+      t.isBarbershop ? Icons.content_cut : Icons.storefront_outlined;
+
+  String _typeLabel(TenantOption t) =>
+      t.isBarbershop ? 'Barbería' : 'Tienda en línea';
+
+  Color _colorFor(TenantOption t, ColorScheme cs) {
+    final hex = t.colorHex;
+    if (hex != null && hex.isNotEmpty) {
+      final cleaned = hex.replaceFirst('#', '');
+      final value = int.tryParse(
+        cleaned.length == 6 ? 'FF$cleaned' : cleaned,
+        radix: 16,
+      );
+      if (value != null) return Color(value);
+    }
+    return cs.primary;
   }
 
   @override
@@ -89,25 +117,62 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
         child: Column(
           children: [
             _buildHeader(cs),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildDropdown(cs),
-                    if (_selected != null) ...[
-                      const SizedBox(height: 16),
-                      _buildPreviewCard(_selected!, cs),
-                      const SizedBox(height: 24),
-                      _buildEnterButton(cs),
-                    ],
-                  ],
-                ),
-              ),
+            Expanded(child: _buildBody(cs)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(ColorScheme cs) {
+    final tokens = Theme.of(context).extension<AppTokens>()!;
+
+    if (_tenants == null) {
+      return Center(child: CircularProgressIndicator(color: cs.primary));
+    }
+
+    if (_fetchFailed && _tenants!.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.wifi_off_rounded, size: 56, color: tokens.textSubtle),
+            const SizedBox(height: 16),
+            Text(
+              'No se pudo cargar el listado de tiendas',
+              style: TextStyle(color: cs.onBackground, fontSize: 15),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Verificá tu conexión e intentá de nuevo',
+              style: TextStyle(color: tokens.textMuted, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: _loadTenants,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Reintentar'),
             ),
           ],
         ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildDropdown(cs),
+          if (_selected != null) ...[
+            const SizedBox(height: 16),
+            _buildPreviewCard(_selected!, cs),
+            const SizedBox(height: 12),
+            _buildDefaultCheckbox(cs, tokens),
+            const SizedBox(height: 16),
+            _buildEnterButton(cs),
+          ],
+        ],
       ),
     );
   }
@@ -174,7 +239,7 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
       child: DropdownButtonHideUnderline(
         child: ButtonTheme(
           alignedDropdown: true,
-          child: DropdownButton<_Tenant>(
+          child: DropdownButton<TenantOption>(
             value: _selected,
             isExpanded: true,
             dropdownColor: cs.surface,
@@ -190,8 +255,9 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
               child: Icon(Icons.keyboard_arrow_down_rounded, color: tokens.textMuted),
             ),
             borderRadius: BorderRadius.circular(14),
-            items: _kTenants.map((t) {
-              return DropdownMenuItem<_Tenant>(
+            items: _tenants!.map((t) {
+              final color = _colorFor(t, cs);
+              return DropdownMenuItem<TenantOption>(
                 value: t,
                 child: Row(
                   children: [
@@ -199,10 +265,10 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: t.color.withOpacity(0.15),
+                        color: color.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(t.icon, color: t.color, size: 18),
+                      child: Icon(_iconFor(t), color: color, size: 18),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -228,8 +294,9 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
 
   // ─── Preview card ─────────────────────────────────────────────────────────
 
-  Widget _buildPreviewCard(_Tenant t, ColorScheme cs) {
+  Widget _buildPreviewCard(TenantOption t, ColorScheme cs) {
     final tokens = Theme.of(context).extension<AppTokens>()!;
+    final color = _colorFor(t, cs);
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 280),
       transitionBuilder: (child, anim) => FadeTransition(
@@ -254,7 +321,7 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
             Container(
               height: 6,
               decoration: BoxDecoration(
-                color: t.color,
+                color: color,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
               ),
             ),
@@ -266,10 +333,20 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: t.color.withOpacity(0.15),
+                      color: color.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Icon(t.icon, color: t.color, size: 30),
+                    child: t.logoUrl != null && t.logoUrl!.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: CachedNetworkImage(
+                              imageUrl: t.logoUrl!,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) =>
+                                  Icon(_iconFor(t), color: color, size: 30),
+                            ),
+                          )
+                        : Icon(_iconFor(t), color: color, size: 30),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -286,22 +363,48 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          t.subtitle,
+                          t.subtitle?.isNotEmpty ?? false
+                              ? t.subtitle!
+                              : _typeLabel(t),
                           style: TextStyle(fontSize: 13, color: tokens.textMuted),
                         ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            Icon(Icons.location_on_outlined, size: 14, color: cs.primary),
-                            const SizedBox(width: 4),
-                            Text(
-                              t.location,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: cs.primary,
-                                fontWeight: FontWeight.w500,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(AppRadius.pill),
+                                border: Border.all(color: color.withOpacity(0.35)),
+                              ),
+                              child: Text(
+                                _typeLabel(t),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: color,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
+                            if (t.location?.isNotEmpty ?? false) ...[
+                              const SizedBox(width: 10),
+                              Icon(Icons.location_on_outlined,
+                                  size: 14, color: cs.primary),
+                              const SizedBox(width: 3),
+                              Flexible(
+                                child: Text(
+                                  t.location!,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: cs.primary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ],
@@ -311,6 +414,38 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Default checkbox ─────────────────────────────────────────────────────
+
+  Widget _buildDefaultCheckbox(ColorScheme cs, AppTokens tokens) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outline),
+      ),
+      child: CheckboxListTile(
+        value: _useAsDefault,
+        onChanged: (v) => setState(() => _useAsDefault = v ?? false),
+        activeColor: cs.primary,
+        checkColor: cs.onPrimary,
+        controlAffinity: ListTileControlAffinity.leading,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+        title: Text(
+          'Usar como tienda predeterminada',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: cs.onBackground,
+          ),
+        ),
+        subtitle: Text(
+          'Al abrir la app entrarás directo a esta tienda',
+          style: TextStyle(fontSize: 12, color: tokens.textMuted),
         ),
       ),
     );
@@ -335,9 +470,12 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Entrar a ${_selected!.name}',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  Flexible(
+                    child: Text(
+                      'Entrar a ${_selected!.name}',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   const Icon(Icons.arrow_forward_rounded, size: 18),
