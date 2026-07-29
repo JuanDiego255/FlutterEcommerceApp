@@ -356,11 +356,16 @@ class _BarberHomePageState extends State<BarberHomePage> {
                           Navigator.pushNamed(context, 'barber/my-bookings');
                           break;
                         case 'agenda':
-                          Navigator.pushNamed(
-                              context,
-                              TenantSession.hasAdminAccess
-                                  ? 'barber/agenda'
-                                  : 'admin/token');
+                          // La agenda solo necesita el token de la app
+                          // (X-App-Token); si falta, se pide y se vuelve
+                          // directo acá — sin pasar por login ni roles,
+                          // que son del flujo e-commerce.
+                          if (TenantSession.hasAdminAccess) {
+                            Navigator.pushNamed(context, 'barber/agenda');
+                          } else {
+                            Navigator.pushNamed(context, 'admin/token',
+                                arguments: {'nextRoute': 'barber/agenda'});
+                          }
                           break;
                         case 'change':
                           Navigator.pushReplacementNamed(

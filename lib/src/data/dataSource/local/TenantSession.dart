@@ -77,6 +77,26 @@ class TenantSession {
     await SecureStorageService.clearAll();
   }
 
+  /// Guarda dominio/token conservando la vertical, el color y las funciones
+  /// del tenant si el dominio no cambió. Lo usan las pantallas que solo
+  /// configuran servidor o token (AdminTokenPage, config manual del login):
+  /// sin esto el tenant volvería a 'ecommerce' y la app perdería el modo
+  /// barbería.
+  static Future<void> saveKeepingVertical({
+    required String domain,
+    String? appToken,
+  }) async {
+    final current = _config;
+    final sameDomain = current != null && current.domain == domain;
+    await save(TenantConfig(
+      domain: domain,
+      type: sameDomain ? current.type : 'ecommerce',
+      colorHex: sameDomain ? current.colorHex : null,
+      features: sameDomain ? current.features : const [],
+      appToken: appToken ?? (sameDomain ? current.appToken : null),
+    ));
+  }
+
   /// Refresca las funciones premium (y opcionalmente el color de marca) del
   /// tenant activo — la fuente de verdad es la BD central, así que la app
   /// las actualiza cada vez que el backend las publica (p. ej. al cargar el

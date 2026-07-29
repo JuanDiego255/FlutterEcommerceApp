@@ -1,5 +1,6 @@
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/domain/models/Role.dart';
+import 'package:ecommerce_flutter/src/presentation/utils/TenantRoutes.dart';
 import 'package:flutter/material.dart';
 
 class RolesItem extends StatelessWidget {
@@ -12,16 +13,19 @@ class RolesItem extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         final isAdmin = role.route.contains('admin');
+        // En barbería el destino administrativo es la agenda, no el módulo
+        // de e-commerce (TenantRoutes traduce según la vertical).
+        final target = TenantRoutes.resolve(role.route);
         if (isAdmin && !TenantSession.hasAdminAccess) {
-          // No app token yet — ask for it first, then go straight to admin/home
+          // No app token yet — ask for it first, then go straight to target
           Navigator.pushNamedAndRemoveUntil(
             context,
             'admin/token',
             (r) => false,
-            arguments: {'nextRoute': role.route},
+            arguments: {'nextRoute': target},
           );
         } else {
-          Navigator.pushNamedAndRemoveUntil(context, role.route, (route) => false);
+          Navigator.pushNamedAndRemoveUntil(context, target, (route) => false);
         }
       },
       child: Column(

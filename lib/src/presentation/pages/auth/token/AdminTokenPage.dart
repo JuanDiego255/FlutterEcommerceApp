@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
-import 'package:ecommerce_flutter/src/domain/models/TenantConfig.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -57,17 +56,20 @@ class _AdminTokenPageState extends State<AdminTokenPage> {
       return;
     }
 
-    await TenantSession.save(TenantConfig(
-      domain:   domain,
-      appToken: token,
-    ));
+    // Conservar la vertical/branding del tenant al guardar el token: sin
+    // esto el tenant volvería a 'ecommerce' y la app perdería el modo
+    // barbería justo después de configurar el token.
+    await TenantSession.saveKeepingVertical(domain: domain, appToken: token);
 
     if (!mounted) return;
-    // If a nextRoute was passed (e.g., 'admin/home' from RolesItem), go there directly.
-    // Otherwise fall back to the login screen (original behaviour).
+    // If a nextRoute was passed (e.g., 'admin/home' from RolesItem or
+    // 'barber/agenda' desde la barbería), go there directly.
+    // Sin nextRoute: en barbería no aplica el login de e-commerce, se
+    // vuelve al home de la vertical; en e-commerce se mantiene el login.
     final args = ModalRoute.of(context)?.settings.arguments;
     final nextRoute = (args is Map) ? (args['nextRoute'] as String?) : null;
-    Navigator.pushReplacementNamed(context, nextRoute ?? 'login');
+    final fallback = TenantSession.isBarbershop ? TenantSession.homeRoute : 'login';
+    Navigator.pushReplacementNamed(context, nextRoute ?? fallback);
   }
 
   @override

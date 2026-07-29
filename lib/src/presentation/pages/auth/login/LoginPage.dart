@@ -1,10 +1,12 @@
 import 'package:ecommerce_flutter/injection.dart';
+import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
 import 'package:ecommerce_flutter/src/domain/models/AuthResponse.dart';
 import 'package:ecommerce_flutter/src/domain/useCases/auth/AuthUseCases.dart';
 import 'package:ecommerce_flutter/src/domain/utils/Resource.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/bloc/LoginBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/LoginContent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/bloc/LoginState.dart';
+import 'package:ecommerce_flutter/src/presentation/utils/TenantRoutes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -55,9 +57,11 @@ class _LoginPageState extends State<LoginPage> {
                 final roles = authResponse.user.roles ?? [];
                 final String nextRoute;
                 if (roles.length == 1) {
-                  nextRoute = roles.first.route;
+                  // Las rutas del backend son de e-commerce; en barbería se
+                  // traducen a la vertical correspondiente.
+                  nextRoute = TenantRoutes.resolve(roles.first.route);
                 } else if (roles.isEmpty) {
-                  nextRoute = 'catalog/home';
+                  nextRoute = TenantSession.homeRoute;
                 } else {
                   nextRoute = 'roles';
                 }

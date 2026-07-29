@@ -3,6 +3,7 @@ import 'package:ecommerce_flutter/src/presentation/pages/roles/RolesItem.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/roles/bloc/RolesBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/roles/bloc/RolesEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/roles/bloc/RolesState.dart';
+import 'package:ecommerce_flutter/src/presentation/utils/TenantRoutes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -39,7 +40,7 @@ class _RolesPageState extends State<RolesPage> {
             if (!role.route.contains('admin')) {
               Navigator.pushNamedAndRemoveUntil(
                 context,
-                role.route,
+                TenantRoutes.resolve(role.route),
                 (r) => false,
               );
             }

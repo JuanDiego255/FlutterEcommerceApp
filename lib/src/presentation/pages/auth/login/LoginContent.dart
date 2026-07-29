@@ -1,5 +1,4 @@
 import 'package:ecommerce_flutter/src/data/dataSource/local/TenantSession.dart';
-import 'package:ecommerce_flutter/src/domain/models/TenantConfig.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/bloc/LoginBloc.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/bloc/LoginEvent.dart';
 import 'package:ecommerce_flutter/src/presentation/pages/auth/login/bloc/LoginState.dart';
@@ -56,10 +55,11 @@ class _LoginContentState extends State<LoginContent> {
         .replaceAll(RegExp(r'^https?://'), '')
         .replaceAll(RegExp(r'/$'), '');
 
-    await TenantSession.save(TenantConfig(
+    // Conserva vertical/branding si es el mismo dominio ya configurado.
+    await TenantSession.saveKeepingVertical(
       domain: domain,
       appToken: TenantSession.appToken,
-    ));
+    );
 
     if (!mounted) return;
     setState(() {
