@@ -58,5 +58,10 @@
 		</array>
 	</dict>
 	</array>
+	<key>NSCalendarsUsageDescription</key>
+<string>La aplicación necesita acceso al calendario para permitir guardar eventos y recordatorios relacionados con sus pedidos, o bien citas programadas.</string>
+
+<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+<string>La aplicación necesita permiso para agregar eventos y recordatorios relacionados con sus pedidos o citas al calendario.</string>
 </dict>
 </plist>
